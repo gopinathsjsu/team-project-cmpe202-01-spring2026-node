@@ -1,5 +1,5 @@
-import Header from './pages/header';
-import AppRoutes from './pages/routes';
+import Header from './app/pages/header';
+import AppRoutes from './app/pages/routes';
 
 function App() {
   return (

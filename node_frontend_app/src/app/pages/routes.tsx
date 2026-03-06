@@ -1,6 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import Home from './home';
-import CreateEvent from './createEvent';
+import { CreateEvent } from './createEvent';
 
 export default function AppRoutes() {
     return (
