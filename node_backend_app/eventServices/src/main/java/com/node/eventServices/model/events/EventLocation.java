@@ -1,10 +1,8 @@
 package com.node.eventServices.model.events;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.Data;
+import org.locationtech.jts.geom.Point;
 
 @Entity
 @Data
@@ -14,22 +12,10 @@ public class EventLocation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long locationId;
 
-    private String venueName;
+    private String locationName;
 
-    private String addressLine1;
+    private String locationAddress;
 
-    private String addressLine2;
-
-    private String city;
-
-    private String state;
-
-    private String zipCode;
-
-    private String country;
-
-    private Double latitude;
-
-    private Double longitude;
-
+    @Column(columnDefinition = "geometry(Point,4326)")
+    private Point location;
 }
