@@ -1,7 +1,6 @@
 package com.node.eventServices.model.events;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.Data;
 
 import java.time.LocalDate;
@@ -12,19 +11,32 @@ import java.util.List;
 public class Events {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long eventId;
 
     private String eventName;
 
     private String eventDescription;
 
+    @ManyToMany
+    @JoinTable(
+        name = "event_categories_mapping",
+        joinColumns = @JoinColumn(name = "event_id"),
+        inverseJoinColumns = @JoinColumn(name = "category_id")
+    )
     private List<EventCategory> categories;
 
     private Long maxCapacity;
 
     private Long waitlistCapacity;
 
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "location_id")
     private EventLocation eventLocation;
+
+    private String ticketPrice;
+
+    private String imageUrl;
 
     private LocalDate eventStartDate;
 
@@ -40,6 +52,18 @@ public class Events {
 
     private Long approverId;
 
-    private String status;
+    private String status; // PENDING, APPROVED, REJECTED, CANCELLED
 
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDate.now();
+        if (status == null) {
+            status = "PENDING";
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDate.now();
+    }
 }
