@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-DiscoveryServiceApplication<discoveryService>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.node.discoveryService.DiscoveryServiceApplication",
+            "projectName": "discoveryService",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
