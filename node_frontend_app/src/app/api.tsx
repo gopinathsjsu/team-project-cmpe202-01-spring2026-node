@@ -80,6 +80,18 @@ export function runAPI() {
       const response = await axios.post(`${API_BASE_URL}/events`, event);
       return response.data;
     },
+    approveEvent: async (id: string, approverId: string): Promise<Event> => {
+      const response = await axios.put(`${API_BASE_URL}/events/${id}/approve?approverId=${approverId}`);
+      return response.data;
+    },
+    rejectEvent: async (id: string, approverId: string, rejectionReason: string): Promise<Event> => {
+      const response = await axios.put(`${API_BASE_URL}/events/${id}/reject?approverId=${approverId}&rejectionReason=${rejectionReason}`);
+      return response.data;
+    },
+    updateEventStatus: async (id: string, status: string): Promise<Event> => {
+      const response = await axios.put(`${API_BASE_URL}/events/${id}/status?status=${status}`);
+      return response.data;
+    },
     updateEvent: async (id: string, event: Partial<Event>): Promise<Event> => {
       const response = await axios.put(`${API_BASE_URL}/events/${id}`, event);
       return response.data;
@@ -100,14 +112,6 @@ export function runAPI() {
     // Event Approvals
     getPendingEvents: async (): Promise<Event[]> => {
       const response = await axios.get(`${API_BASE_URL}/events/pending`);
-      return response.data;
-    },
-    approveEvent: async (id: string): Promise<Event> => {
-      const response = await axios.put(`${API_BASE_URL}/events/${id}/approve`);
-      return response.data;
-    },
-    rejectEvent: async (id: string): Promise<Event> => {
-      const response = await axios.put(`${API_BASE_URL}/events/${id}/reject`);
       return response.data;
     },
 
