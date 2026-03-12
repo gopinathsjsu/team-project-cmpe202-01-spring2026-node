@@ -67,10 +67,10 @@ public class EventManagementServiceImpl implements EventManagementService {
     }
 
     @Override
-    public Events rejectEvent(Long eventId, Long approverId) {
+    public Events rejectEvent(Long eventId, Long adminId, String reason) {
         Events event = eventRepository.findById(eventId).orElseThrow(() -> new RuntimeException("Event not found"));
         event.setStatus("REJECTED");
-        event.setApproverId(approverId);
+        event.setApproverId(adminId);
         return eventRepository.save(event);
     }
 
@@ -87,5 +87,12 @@ public class EventManagementServiceImpl implements EventManagementService {
     @Override
     public List<Events> getEventsByOrganizerAndStatus(Long organizerId, String status) {
         return eventRepository.findByEventOwnerIdAndStatus(organizerId, status);
+    }
+
+    @Override
+    public Events updateEventStatus(Long id, String status) {
+        Events event = eventRepository.findById(id).orElseThrow(() -> new RuntimeException("Event not found"));
+        event.setStatus(status);
+        return eventRepository.save(event);
     }
 }

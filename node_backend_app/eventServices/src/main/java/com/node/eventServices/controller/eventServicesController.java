@@ -17,14 +17,15 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.logging.Logger;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/events")
-@Slf4j
 public class EventServicesController {
 
     @Autowired
@@ -59,11 +60,11 @@ public class EventServicesController {
         event.setEventLocation(buildLocation(request.getEventLocation()));
         event.setTicketPrice(request.getTicketPrice());
         event.setImageUrl(request.getImageUrl());
+        // If client provided date-only values use them; otherwise we'll derive from Instants below
         event.setEventStartDate(request.getEventStartDate());
         event.setEventEndDate(request.getEventEndDate());
         // Map Instants and timezone when provided
         if (request.getEventStartInstant() != null) {
-            log.info("Mapping eventStartInstant: " + request.getEventStartInstant());
             event.setEventStartInstant(request.getEventStartInstant());
         }
         if (request.getEventEndInstant() != null) {
@@ -75,6 +76,20 @@ public class EventServicesController {
         if (request.getEventTimeZone() != null) {
             event.setEventTimeZone(request.getEventTimeZone());
         }
+
+        // Derive legacy LocalDate fields from instants if they were not supplied
+        ZoneId zone = (request.getEventTimeZone() != null && !request.getEventTimeZone().isBlank())
+                ? ZoneId.of(request.getEventTimeZone()) : ZoneOffset.UTC;
+        if (event.getEventStartDate() == null && event.getEventStartInstant() != null) {
+            event.setEventStartDate(event.getEventStartInstant().atZone(zone).toLocalDate());
+        }
+        if (event.getEventEndDate() == null && event.getEventEndInstant() != null) {
+            event.setEventEndDate(event.getEventEndInstant().atZone(zone).toLocalDate());
+        }
+        if (event.getEventPublishDate() == null && event.getEventPublishInstant() != null) {
+            event.setEventPublishDate(event.getEventPublishInstant().atZone(zone).toLocalDate());
+        }
+
         event.setEventOwnerId(request.getEventOwnerId());
         event.setStatus(request.getStatus());
 
@@ -103,6 +118,7 @@ public class EventServicesController {
     @PutMapping("/{id}")
     public ResponseEntity<Events> updateEvent(@PathVariable Long id, @RequestBody CreateEventRequest request) {
         try {
+            log.info(request.getEventStartInstant().toString()+" is start" );
             Events eventDetails = new Events();
             eventDetails.setEventName(request.getEventName());
             eventDetails.setEventDescription(request.getEventDescription());
@@ -115,8 +131,9 @@ public class EventServicesController {
             eventDetails.setEventEndDate(request.getEventEndDate());
             // Map Instants and timezone when provided
             if (request.getEventStartInstant() != null) {
-                eventDetails.setEventStartInstant(request.getEventStartInstant());
 
+                eventDetails.setEventStartInstant(request.getEventStartInstant());
+                log.info(eventDetails.getEventStartInstant().toString()+" is start" );
             }
             if (request.getEventEndInstant() != null) {
                 eventDetails.setEventEndInstant(request.getEventEndInstant());
@@ -127,6 +144,20 @@ public class EventServicesController {
             if (request.getEventTimeZone() != null) {
                 eventDetails.setEventTimeZone(request.getEventTimeZone());
             }
+
+            // Derive date-only fields from instants if not provided
+            ZoneId zoneUpd = (request.getEventTimeZone() != null && !request.getEventTimeZone().isBlank())
+                    ? ZoneId.of(request.getEventTimeZone()) : ZoneOffset.UTC;
+            if (eventDetails.getEventStartDate() == null && eventDetails.getEventStartInstant() != null) {
+                eventDetails.setEventStartDate(eventDetails.getEventStartInstant().atZone(zoneUpd).toLocalDate());
+            }
+            if (eventDetails.getEventEndDate() == null && eventDetails.getEventEndInstant() != null) {
+                eventDetails.setEventEndDate(eventDetails.getEventEndInstant().atZone(zoneUpd).toLocalDate());
+            }
+            if (eventDetails.getEventPublishDate() == null && eventDetails.getEventPublishInstant() != null) {
+                eventDetails.setEventPublishDate(eventDetails.getEventPublishInstant().atZone(zoneUpd).toLocalDate());
+            }
+
             eventDetails.setEventOwnerId(request.getEventOwnerId());
             eventDetails.setStatus(request.getStatus());
 
@@ -137,6 +168,16 @@ public class EventServicesController {
             eventDetails.setCategories(categories);
 
             Events updatedEvent = eventManagementService.updateEvent(id, eventDetails);
+            return ResponseEntity.ok(updatedEvent);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PutMapping("/{id}/status")
+    public ResponseEntity<Events> updateEventStatus(@PathVariable Long id, @RequestParam String status) {
+        try {
+            Events updatedEvent = eventManagementService.updateEventStatus(id, status);
             return ResponseEntity.ok(updatedEvent);
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
@@ -165,9 +206,9 @@ public class EventServicesController {
     }
 
     @PutMapping("/{id}/reject")
-    public ResponseEntity<Events> rejectEvent(@PathVariable Long id, @RequestParam Long approverId) {
+    public ResponseEntity<Events> rejectEvent(@PathVariable Long id, @RequestParam Long adminId, @RequestParam(required = false) String reason) {
         try {
-            Events rejectedEvent = eventManagementService.rejectEvent(id, approverId);
+            Events rejectedEvent = eventManagementService.rejectEvent(id, adminId, reason);
             return ResponseEntity.ok(rejectedEvent);
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
