@@ -14,8 +14,9 @@ public interface EventManagementService {
     void deleteEvent(Long id);
     List<Events> getEventsByStatus(String status);
     Events approveEvent(Long eventId, Long approverId);
-    Events rejectEvent(Long eventId, Long approverId);
+    Events rejectEvent(Long eventId, Long adminId, String reason);
     List<Events> getEventsByOrganizer(Long organizerId);
     List<Events> searchEvents(String name);
     List<Events> getEventsByOrganizerAndStatus(Long organizerId, String status);
+    Events updateEventStatus(Long id, String status);
 }
