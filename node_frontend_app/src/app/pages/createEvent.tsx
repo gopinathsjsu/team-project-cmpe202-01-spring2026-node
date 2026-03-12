@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { Button } from '../components/ui/button';
@@ -8,53 +8,184 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { ArrowLeft, Plus, X } from 'lucide-react';
-import { categories } from '../mockData';
 import { toast } from 'sonner';
 import { Badge } from '../components/ui/badge';
 import { runAPI } from '../api';
+import type { Event, EventCategory } from '../types';
+
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix for default marker icon in react-leaflet
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 export function CreateEvent() {
   const navigate = useNavigate();
   const api = runAPI();
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+
+  const [categories, setCategories] = useState<EventCategory[]>([]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const categories = await runAPI().getCategories();
+      setCategories(categories);
+    };
+    fetchCategories();
+  }, []);
 
 
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    category: '',
-    date: '',
-    time: '',
+    categories: [] as string[],
+    startDate: '',
+    startTime: '',
+    endDate: '',
+    endTime: '',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     location: '',
     venue: '',
     price: 0,
-    capacity: 100,
+    maxCapacity: 100,
+    waitlistCapacity: 0,
     image: '',
     tags: [] as string[],
   });
 
   const [tagInput, setTagInput] = useState('');
+  const [selectKey, setSelectKey] = useState(0);
 
+  // Map state
+  const [mapPosition, setMapPosition] = useState<[number, number] | null>(null);
 
-  const handleSubmit = (e: React.FormEvent, status: 'draft' | 'published') => {
-    e.preventDefault();
+  // Map click handler component
+  function LocationMarker() {
+    useMapEvents({
+      click(e) {
+        setMapPosition([e.latlng.lat, e.latlng.lng]);
+        reverseGeocode(e.latlng.lat, e.latlng.lng);
+      },
+    });
 
-    if (!formData.title || !formData.category || !formData.date || !formData.time || !formData.location) {
-      toast.error('Please fill in all required fields');
+    return mapPosition === null ? null : (
+      <Marker position={mapPosition} />
+    );
+  }
+
+  const reverseGeocode = async (lat: number, lng: number) => {
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+      const data = await response.json();
+
+      if (data && data.address) {
+        // Construct a readable address
+        const addr = data.address;
+        const venue = addr.amenity || addr.building || addr.shop || addr.leisure || '';
+        const street = addr.road ? `${addr.house_number || ''} ${addr.road}`.trim() : '';
+        const cityContext = addr.city || addr.town || addr.village || addr.suburb || '';
+        const stateContext = addr.state || '';
+
+        const fullAddress = [street, cityContext, stateContext].filter(Boolean).join(', ');
+
+        setFormData(prev => ({
+          ...prev,
+          venue: venue || (street ? street : 'Selected Location'),
+          location: fullAddress || data.display_name
+        }));
+
+        toast.success(`Location identified: ${venue || cityContext}`);
+      }
+    } catch (error) {
+      console.error("Geocoding error: ", error);
+      toast.error("Failed to reverse-geocode location");
+    }
+  };
+
+  const forwardGeocode = async () => {
+    const query = `${formData.venue} ${formData.location}`.trim();
+    if (!query) {
+      toast.error("Please enter a location or venue to search");
       return;
     }
 
-    const newEvent = {
-      id: `evt-${Date.now()}`,
-      ...formData,
-      organizerId: "123",
-      organizerName: "admin",
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+      const data = await response.json();
+
+      if (data && data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lng = parseFloat(data[0].lon);
+        setMapPosition([lat, lng]);
+        toast.success("Location found on map!");
+      } else {
+        toast.error("Could not find this location on the map.");
+      }
+    } catch (error) {
+      console.error("Geocoding error: ", error);
+      toast.error("Search failed");
+    }
+  };
+
+  // Component to update map center when mapPosition changes from outside
+  function MapUpdater({ center }: { center: [number, number] | null }) {
+    const map = useMap();
+    useEffect(() => {
+      if (center) {
+        map.flyTo(center, 15);
+      }
+    }, [center, map]);
+    return null;
+  }
+
+  const handleSubmit = (e: React.FormEvent, status: 'draft' | 'submitted') => {
+    e.preventDefault();
+
+    if (!formData.title || formData.categories.length === 0 || !formData.startDate || !formData.startTime || !formData.endDate || !formData.endTime || !formData.timezone || !formData.location) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    if (!currentUser?.id) {
+      toast.error('Please login to create an event');
+      return;
+    }
+
+    const newEvent: Event = {
+      eventId: null,
+      eventName: formData.title,
+      eventDescription: formData.description,
+      categories: formData.categories, //formData.categories all categories info with selected categories  ,
+      maxCapacity: formData.maxCapacity,
+      waitlistCapacity: formData.waitlistCapacity,
+      eventLocation: {
+        locationName: formData.venue,
+        locationAddress: formData.location,
+        latitude: mapPosition?.[0] || null,
+        longitude: mapPosition?.[1] || null
+      },
+      ticketPrice: formData.price,
+      imageUrl: formData.image,
+      eventStartDate: `${formData.startDate}T${formData.startTime}:00`,
+      eventEndDate: `${formData.endDate}T${formData.endTime}:00`,
+      timezone: formData.timezone,
+      eventPublishDate: new Date().toISOString(),
+      eventOwnerId: currentUser?.id,
       ticketsSold: 0,
       status,
       createdAt: new Date().toISOString(),
+      approverId: null,
+      updatedAt: null,
+      tags: formData.tags
     };
 
     api.addEvent(newEvent);
-    toast.success(`Event ${status === 'draft' ? 'saved as draft' : 'published'} successfully!`);
+    toast.success(`Event ${status === 'draft' ? 'saved as draft' : 'submitted'} successfully!`);
     navigate('/dashboard');
   };
 
@@ -135,52 +266,143 @@ export function CreateEvent() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="category">Category *</Label>
+                    <Label htmlFor="category">Categories *</Label>
                     <Select
-                      value={formData.category}
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+                      key={selectKey}
+                      onValueChange={(value) => {
+                        if (!formData.categories.includes(value)) {
+                          setFormData(prev => ({ ...prev, categories: [...prev.categories, value] }));
+                        }
+                        // Reset the select component so the same option can be re-selected if removed
+                        setSelectKey(prev => prev + 1);
+                      }}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a category" />
+                        <SelectValue placeholder="Select categories" />
                       </SelectTrigger>
                       <SelectContent>
-                        {categories.map(cat => (
-                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                        ))}
+                        {categories.map(cat => {
+                          const catId = String((cat as any).categoryId || cat.id);
+                          return (
+                            <SelectItem key={catId} value={catId}>{cat.categoryName}</SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
+                    {formData.categories.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {formData.categories.map(catId => {
+                          const category = categories.find(c => String((c as any).categoryId || c.id) === catId);
+                          return category ? (
+                            <Badge key={catId} variant="secondary" className="gap-1">
+                              {category.categoryName}
+                              <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({
+                                  ...prev,
+                                  categories: prev.categories.filter(id => id !== catId)
+                                }))}
+                                className="ml-1 hover:text-red-600"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </Badge>
+                          ) : null;
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Date & Time */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="date">Date *</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      value={formData.date}
-                      onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                      required
-                    />
+                    <Label>Start Date & Time *</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="date"
+                        value={formData.startDate}
+                        onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                        required
+                        className="flex-1"
+                      />
+                      <Input
+                        type="time"
+                        value={formData.startTime}
+                        onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
+                        required
+                        className="flex-1"
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="time">Time *</Label>
-                    <Input
-                      id="time"
-                      type="time"
-                      value={formData.time}
-                      onChange={(e) => setFormData(prev => ({ ...prev, time: e.target.value }))}
-                      required
-                    />
+                    <Label>End Date & Time *</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="date"
+                        value={formData.endDate}
+                        onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                        required
+                        className="flex-1"
+                      />
+                      <Input
+                        type="time"
+                        value={formData.endTime}
+                        onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
+                        required
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="timezone">Timezone *</Label>
+                    <Select
+                      value={formData.timezone}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, timezone: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Timezone" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="America/Los_Angeles">Pacific Time (PT) - Los Angeles</SelectItem>
+                        <SelectItem value="America/Denver">Mountain Time (MT) - Denver</SelectItem>
+                        <SelectItem value="America/Chicago">Central Time (CT) - Chicago</SelectItem>
+                        <SelectItem value="America/New_York">Eastern Time (ET) - New York</SelectItem>
+                        <SelectItem value="UTC">UTC</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Map Picker */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Pin Event Location on Map</Label>
+                    <span className="text-xs text-muted-foreground">Click anywhere to drop a pin</span>
+                  </div>
+                  <div className="h-64 w-full rounded-lg overflow-hidden border">
+                    <MapContainer
+                      center={[37.3352, -121.8811]}
+                      zoom={13}
+                      scrollWheelZoom={true}
+                      style={{ height: '100%', width: '100%' }}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <LocationMarker />
+                      <MapUpdater center={mapPosition} />
+                    </MapContainer>
                   </div>
                 </div>
 
                 {/* Location */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="location">Location *</Label>
+                    <Label htmlFor="location">Location Address *</Label>
                     <Input
                       id="location"
                       value={formData.location}
@@ -191,7 +413,7 @@ export function CreateEvent() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="venue">Venue *</Label>
+                    <Label htmlFor="venue">Venue Name *</Label>
                     <Input
                       id="venue"
                       value={formData.venue}
@@ -200,10 +422,16 @@ export function CreateEvent() {
                       required
                     />
                   </div>
+
+                  <div className="md:col-span-2 mt-2">
+                    <Button type="button" variant="secondary" className="w-full" onClick={forwardGeocode}>
+                      Find Typed Address on Map
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Pricing & Capacity */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="price">Ticket Price ($)</Label>
                     <Input
@@ -219,13 +447,25 @@ export function CreateEvent() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="capacity">Capacity *</Label>
+                    <Label htmlFor="maxCapacity">Max Capacity *</Label>
                     <Input
-                      id="capacity"
+                      id="maxCapacity"
                       type="number"
                       min="1"
-                      value={formData.capacity}
-                      onChange={(e) => setFormData(prev => ({ ...prev, capacity: Number(e.target.value) }))}
+                      value={formData.maxCapacity}
+                      onChange={(e) => setFormData(prev => ({ ...prev, maxCapacity: Number(e.target.value) }))}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="waitlistCapacity">Waitlist Capacity *</Label>
+                    <Input
+                      id="waitlistCapacity"
+                      type="number"
+                      min="0"
+                      value={formData.waitlistCapacity}
+                      onChange={(e) => setFormData(prev => ({ ...prev, waitlistCapacity: Number(e.target.value) }))}
                       required
                     />
                   </div>
@@ -307,10 +547,10 @@ export function CreateEvent() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={(e) => handleSubmit(e, 'published')}
+                    onClick={(e) => handleSubmit(e, 'submitted')}
                     className="flex-1"
                   >
-                    Publish Event
+                    Submit for Review
                   </Button>
                 </div>
               </form>
