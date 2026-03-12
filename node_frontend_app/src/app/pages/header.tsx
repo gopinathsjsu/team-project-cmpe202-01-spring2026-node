@@ -26,16 +26,10 @@ export default function Header() {
                             <Link to="/create-event" className="text-gray-700 hover:text-blue-600">
                                 Create Event
                             </Link>
-                            <Link to="/dashboard" className="text-gray-700 hover:text-blue-600">
-                                Dashboard
-                            </Link>
+
                         </>
                     )}
-                    {isAuthenticated && currentUser?.role === 'ADMIN' && (
-                        <Link to="/dashboard" className="text-gray-700 hover:text-blue-600">
-                            Dashboard
-                        </Link>
-                    )}
+
                 </nav>
                 <div className="flex items-center gap-4">
                     {isAuthenticated ? (

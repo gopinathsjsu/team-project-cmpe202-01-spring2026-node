@@ -7,7 +7,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { ArrowLeft, Plus, X } from 'lucide-react';
+import { ArrowLeft, Plus, X, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '../components/ui/badge';
 import { runAPI } from '../api';
@@ -42,14 +42,16 @@ export function CreateEvent() {
 
 
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
+    eventName: '',
+    eventDescription: '',
     categories: [] as string[],
     startDate: '',
     startTime: '',
     endDate: '',
     endTime: '',
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    eventStartInstant: "",
+    eventEndInstant: "",
+    eventTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     location: '',
     venue: '',
     price: 0,
@@ -133,6 +135,27 @@ export function CreateEvent() {
     }
   };
 
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+
+    toast.loading('Fetching current location...', { id: 'location-toast' });
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setMapPosition([latitude, longitude]);
+        reverseGeocode(latitude, longitude);
+        toast.success('Location found!', { id: 'location-toast' });
+      },
+      (error) => {
+        console.error("Error getting location:", error);
+        toast.error('Unable to retrieve your location', { id: 'location-toast' });
+      }
+    );
+  };
+
   // Component to update map center when mapPosition changes from outside
   function MapUpdater({ center }: { center: [number, number] | null }) {
     const map = useMap();
@@ -147,7 +170,7 @@ export function CreateEvent() {
   const handleSubmit = (e: React.FormEvent, status: 'draft' | 'submitted') => {
     e.preventDefault();
 
-    if (!formData.title || formData.categories.length === 0 || !formData.startDate || !formData.startTime || !formData.endDate || !formData.endTime || !formData.timezone || !formData.location) {
+    if (!formData.eventName || formData.categories.length === 0 || !formData.startDate || !formData.startTime || !formData.endDate || !formData.endTime || !formData.eventTimeZone || !formData.location) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -158,8 +181,8 @@ export function CreateEvent() {
 
     const newEvent: Event = {
       eventId: null,
-      eventName: formData.title,
-      eventDescription: formData.description,
+      eventName: formData.eventName,
+      eventDescription: formData.eventDescription,
       categories: formData.categories, //formData.categories all categories info with selected categories  ,
       maxCapacity: formData.maxCapacity,
       waitlistCapacity: formData.waitlistCapacity,
@@ -171,9 +194,11 @@ export function CreateEvent() {
       },
       ticketPrice: formData.price,
       imageUrl: formData.image,
-      eventStartDate: `${formData.startDate}T${formData.startTime}:00`,
-      eventEndDate: `${formData.endDate}T${formData.endTime}:00`,
-      timezone: formData.timezone,
+      eventStartDate: `${formData.startDate}T${formData.startTime}:00Z`,
+      eventEndDate: `${formData.endDate}T${formData.endTime}:00Z`,
+      eventStartInstant: `${formData.startDate}T${formData.startTime}:00Z`,
+      eventEndInstant: `${formData.endDate}T${formData.endTime}:00Z`,
+      eventTimeZone: formData.eventTimeZone,
       eventPublishDate: new Date().toISOString(),
       eventOwnerId: currentUser?.id,
       ticketsSold: 0,
@@ -243,11 +268,11 @@ export function CreateEvent() {
                 {/* Basic Information */}
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="title">Event Title *</Label>
+                    <Label htmlFor="eventName">Event Title *</Label>
                     <Input
-                      id="title"
-                      value={formData.title}
-                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                      id="eventName"
+                      value={formData.eventName}
+                      onChange={(e) => setFormData(prev => ({ ...prev, eventName: e.target.value }))}
                       placeholder="Enter event title"
                       required
                     />
@@ -257,8 +282,8 @@ export function CreateEvent() {
                     <Label htmlFor="description">Description *</Label>
                     <Textarea
                       id="description"
-                      value={formData.description}
-                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                      value={formData.eventDescription}
+                      onChange={(e) => setFormData(prev => ({ ...prev, eventDescription: e.target.value }))}
                       placeholder="Describe your event..."
                       rows={6}
                       required
@@ -357,10 +382,10 @@ export function CreateEvent() {
                   </div>
 
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="timezone">Timezone *</Label>
+                    <Label htmlFor="eventTimeZone">Timezone *</Label>
                     <Select
-                      value={formData.timezone}
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, timezone: value }))}
+                      value={formData.eventTimeZone}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, eventTimeZone: value }))}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select Timezone" />
@@ -423,9 +448,13 @@ export function CreateEvent() {
                     />
                   </div>
 
-                  <div className="md:col-span-2 mt-2">
-                    <Button type="button" variant="secondary" className="w-full" onClick={forwardGeocode}>
+                  <div className="md:col-span-2 mt-2 flex gap-2 flex-wrap">
+                    <Button type="button" variant="secondary" className="flex-1" onClick={forwardGeocode}>
                       Find Typed Address on Map
+                    </Button>
+                    <Button type="button" variant="outline" className="flex-1 border-blue-200 text-blue-600 hover:bg-blue-50" onClick={getCurrentLocation}>
+                      <MapPin className="h-4 w-4 mr-2" />
+                      Use Current Location
                     </Button>
                   </div>
                 </div>

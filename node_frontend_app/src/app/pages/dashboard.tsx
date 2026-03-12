@@ -28,13 +28,16 @@ const createGoogleCalendarLink = (event: any) => {
     const locationStr = event.eventLocation?.locationAddress || event.location || '';
     const location = encodeURIComponent(locationStr);
 
-    const startDateStr = event.eventStartDate || event.startDate || event.date || new Date().toISOString();
-    const endDateStr = event.eventEndDate || event.endDate || event.date || new Date().toISOString();
-
+    // Prefer the exact Instant fields which contain the full UTC date/time (e.g., 2026-03-24T18:00:00Z)
+    const startDateStr = event.eventStartInstant || event.eventStartDate || event.startDate || new Date().toISOString();
+    const endDateStr = event.eventEndInstant || event.eventEndDate || event.endDate || new Date().toISOString();
+    const timezone = event.timezone || "America/Los_Angeles";
     try {
+        // Remove dashes, colons, and milliseconds to match Google Calendar format (YYYYMMDDTHHMMSSZ)
         const start = new Date(startDateStr).toISOString().replace(/-|:|\.\d\d\d/g, '');
+        console.log(start);
         const end = new Date(endDateStr).toISOString().replace(/-|:|\.\d\d\d/g, '');
-        return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${details}&location=${location}`;
+        return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&ctz=${timezone}&details=${details}&location=${location}`;
     } catch (e) {
         return '#';
     }
@@ -155,14 +158,17 @@ export function Dashboard() {
                                         return (
                                             <div key={booking.id} className="flex items-start gap-4 p-4 border rounded-lg">
                                                 <img
-                                                    src={event.imageUrl}
+                                                    src={event.imageUrl || ''}
                                                     alt={event.eventDescription}
                                                     className="w-24 h-24 object-cover rounded"
+                                                    onError={(e) => {
+                                                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1540317580384-e5d43867caa6?auto=format&fit=crop&w=800&q=80';
+                                                    }}
                                                 />
                                                 <div className="flex-1">
                                                     <h3 className="font-semibold mb-1">{event.eventDescription}</h3>
                                                     <p className="text-sm text-gray-600 mb-2">
-                                                        {format(new Date(event.startDate), 'MMM dd, yyyy')} at {event.startTime}
+                                                        {format(new Date(String(event.eventStartInstant || event.eventStartDate || event.startDate || '').replace('Z', '')), 'MMM dd, yyyy')} at {event.eventStartInstant ? format(new Date(String(event.eventStartInstant).replace('Z', '')), 'h:mm a') : ''}
                                                     </p>
                                                     <div className="flex items-center gap-4 text-sm">
                                                         <span className="text-gray-600">
@@ -216,9 +222,18 @@ export function Dashboard() {
         };
 
         const handleToggleStatus = (eventId: string, currentStatus: string) => {
-            const newStatus = currentStatus === 'published' ? 'draft' : 'published';
-            api.updateEvent(eventId, { status: newStatus as any }).then(() => {
-                toast.success(`Event ${newStatus === 'published' ? 'published' : 'unpublished'}`);
+            let newStatus = currentStatus;
+            if (currentStatus.toLowerCase() == 'approved') {
+                newStatus = 'published';
+            }
+            else if (currentStatus.toLowerCase() == 'published') {
+                newStatus = 'approved';
+            }
+            else if (currentStatus.toLowerCase() == 'cancelled') {
+                newStatus = 'published';
+            }
+            api.updateEventStatus(eventId, newStatus).then(() => {
+                toast.success(`Event ${newStatus}`);
                 setEvents(events.map(e => e.id === eventId ? { ...e, status: newStatus } : e));
             });
         };
@@ -341,6 +356,42 @@ export function Dashboard() {
                                         navigate={navigate}
                                     />
                                 </TabsContent>
+                                <TabsContent value="submitted">
+                                    <EventsList
+                                        events={myEvents.filter(e => e.status === 'submitted')}
+                                        onDelete={handleDeleteEvent}
+                                        onToggleStatus={handleToggleStatus}
+                                        getEventBookings={getEventBookings}
+                                        navigate={navigate}
+                                    />
+                                </TabsContent>
+                                <TabsContent value="cancelled">
+                                    <EventsList
+                                        events={myEvents.filter(e => e.status === 'cancelled')}
+                                        onDelete={handleDeleteEvent}
+                                        onToggleStatus={handleToggleStatus}
+                                        getEventBookings={getEventBookings}
+                                        navigate={navigate}
+                                    />
+                                </TabsContent>
+                                <TabsContent value="rejected">
+                                    <EventsList
+                                        events={myEvents.filter(e => e.status === 'rejected')}
+                                        onDelete={handleDeleteEvent}
+                                        onToggleStatus={handleToggleStatus}
+                                        getEventBookings={getEventBookings}
+                                        navigate={navigate}
+                                    />
+                                </TabsContent>
+                                <TabsContent value="completed">
+                                    <EventsList
+                                        events={myEvents.filter(e => e.status === 'completed')}
+                                        onDelete={handleDeleteEvent}
+                                        onToggleStatus={handleToggleStatus}
+                                        getEventBookings={getEventBookings}
+                                        navigate={navigate}
+                                    />
+                                </TabsContent>
                             </Tabs>
                         </CardContent>
                     </Card>
@@ -349,8 +400,12 @@ export function Dashboard() {
         );
     }
 
+    else if (currentUser?.role === 'ADMIN') {
+        navigate('/admin');
+    }
+
     else {
-        redirect('/admin');
+        navigate("/login");
     }
 
 }
@@ -386,13 +441,16 @@ function EventsList({
                             src={event.imageUrl}
                             alt={event.eventName}
                             className="w-32 h-32 object-cover rounded"
+                            onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1540317580384-e5d43867caa6?auto=format&fit=crop&w=800&q=80';
+                            }}
                         />
                         <div className="flex-1">
                             <div className="flex items-start justify-between mb-2">
                                 <div>
                                     <h3 className="font-semibold mb-1">{event.eventName}</h3>
                                     <p className="text-sm text-gray-600 mb-2">
-                                        {format(new Date(event.eventStartDate), 'MMM dd, yyyy')} at {event.eventStartInstant}
+                                        {format(new Date(String(event.eventStartInstant || event.eventStartDate || '').replace('Z', '')), 'MMM dd, yyyy')} at {event.eventStartInstant ? format(new Date(String(event.eventStartInstant).replace('Z', '')), 'h:mm a') : ''}
                                     </p>
                                 </div>
                                 <Badge variant={event.status === 'published' ? 'default' : 'secondary'}>
@@ -432,13 +490,22 @@ function EventsList({
                                     <Edit className="h-4 w-4 mr-1" />
                                     Edit
                                 </Button>
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => onToggleStatus(event.eventId, event.status)}
-                                >
-                                    {event.status === 'published' ? 'Unpublish' : 'Publish'}
-                                </Button>
+                                {event.status.toLowerCase() === 'approved' &&
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => onToggleStatus(event.eventId, event.status)}
+                                    >
+                                        Publish
+                                    </Button>}
+                                {event.status.toLowerCase() === 'published' &&
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => onToggleStatus(event.eventId, event.status)}
+                                    >
+                                        Unpublish
+                                    </Button>}
                                 <Button
                                     size="sm"
                                     variant="outline"

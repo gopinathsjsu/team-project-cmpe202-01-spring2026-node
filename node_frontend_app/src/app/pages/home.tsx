@@ -1,40 +1,18 @@
 import { Search, MapPin, Calendar, Clock, ChevronRight, Music, Laptop, GraduationCap, Trophy } from 'lucide-react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { runAPI } from '../api';
 
-const DUMMY_EVENTS = [
-    {
-        id: 1,
-        title: "Neon Nights Music Festival",
-        date: "Oct 15, 2026",
-        time: "8:00 PM",
-        location: "Downtown Arena, SF",
-        price: "$85",
-        category: "Music",
-        image: "https://images.unsplash.com/photo-1540039155733-d71efd44f847?auto=format&fit=crop&w=600&q=80"
-    },
-    {
-        id: 2,
-        title: "Global Tech Summit 2026",
-        date: "Nov 02, 2026",
-        time: "9:00 AM",
-        location: "Moscone Center",
-        price: "Free",
-        category: "Tech",
-        image: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=600&q=80"
-    },
-    {
-        id: 3,
-        title: "Creative Painting Workshop",
-        date: "Oct 22, 2026",
-        time: "1:00 PM",
-        location: "Art Studio 54",
-        price: "$45",
-        category: "Art",
-        image: "https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?auto=format&fit=crop&w=600&q=80"
-    }
-];
 
 export default function Home() {
+
+    const api = runAPI();
+    const [featuredEvent, setFeaturedEvent] = useState<any[]>([]);
+    useState(() => {
+        api.getEvents().then((data: any[]) => {
+            setFeaturedEvent(data);
+        })
+    })
 
     return (
 
@@ -99,23 +77,25 @@ export default function Home() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-                        {DUMMY_EVENTS.map(event => (
-                            <div key={event.id} className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 group cursor-pointer flex flex-col">
+                        {featuredEvent.map(event => (
+                            <div key={event.eventId} className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 group cursor-pointer flex flex-col">
                                 <div className="relative h-60 overflow-hidden">
-                                    <span className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-lg text-sm font-semibold text-blue-600 z-10 shadow-sm">{event.category}</span>
-                                    <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                    <span className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-lg text-sm font-semibold text-blue-600 z-10 shadow-sm">
+                                        {event.categories.length}
+                                    </span>
+                                    <img src={event.image} alt={event.eventName} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                 </div>
                                 <div className="p-6 flex flex-col flex-grow">
-                                    <h3 className="text-xl font-bold mb-3 text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">{event.title}</h3>
+                                    <h3 className="text-xl font-bold mb-3 text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">{event.eventName}</h3>
 
                                     <div className="space-y-2 mb-6 text-gray-600 text-sm">
                                         <div className="flex items-center gap-2">
                                             <Calendar size={16} className="text-gray-400" />
-                                            <span>{event.date}</span>
+                                            <span>{event.startDate}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <Clock size={16} className="text-gray-400" />
-                                            <span>{event.time}</span>
+                                            <span>{event.startTime}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <MapPin size={16} className="text-gray-400" />
@@ -124,7 +104,7 @@ export default function Home() {
                                     </div>
 
                                     <div className="mt-auto pt-4 border-t border-gray-100 flex items-center justify-between">
-                                        <span className="text-xl font-bold text-gray-900">{event.price}</span>
+                                        <span className="text-xl font-bold text-gray-900">{event.ticketPrice}</span>
                                         <button className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-md shadow-blue-500/30">
                                             Get Tickets
                                         </button>

@@ -29,6 +29,7 @@ export interface Event {
     latitude: number | null;
     longitude: number | null;
   };
+
   ticketPrice: number;
   ticketsSold: number;
   imageUrl: string;
@@ -36,7 +37,9 @@ export interface Event {
   approverId: string | null;
   eventStartDate: string;
   eventEndDate: string;
-  timezone: string;
+  eventStartInstant: string;
+  eventEndInstant: string;
+  eventTimeZone: string;
   eventPublishDate: string;
   updatedAt: string | null;
   status: 'draft' | 'submitted' | 'approved' | 'rejected' | 'cancelled' | 'published';
@@ -58,15 +61,19 @@ export interface Booking {
 }
 
 export interface EventFormData {
-  title: string;
-  description: string;
-  category: string;
-  date: string;
-  time: string;
+  eventName: string;
+  eventDescription: string;
+  categories: string;
+  startDate: string;
+  startTime: string;
+  endDate: string;
+  endTime: string;
+  timeZone: string;
   location: string;
   venue: string;
   price: number;
-  capacity: number;
+  maxCapacity: number;
+  waitlistCapacity: number;
   image: string;
   tags: string[];
 }
