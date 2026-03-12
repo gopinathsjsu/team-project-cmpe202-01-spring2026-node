@@ -12,4 +12,10 @@ public interface EventManagementService {
     List<Events> getAllEvents();
     Events updateEvent(Long id, Events event);
     void deleteEvent(Long id);
+    List<Events> getEventsByStatus(String status);
+    Events approveEvent(Long eventId, Long approverId);
+    Events rejectEvent(Long eventId, Long approverId);
+    List<Events> getEventsByOrganizer(Long organizerId);
+    List<Events> searchEvents(String name);
+    List<Events> getEventsByOrganizerAndStatus(Long organizerId, String status);
 }
