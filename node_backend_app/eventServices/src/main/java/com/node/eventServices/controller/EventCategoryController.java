@@ -3,16 +3,16 @@ package com.node.eventServices.controller;
 import com.node.eventServices.model.events.EventCategory;
 import com.node.eventServices.service.EventCategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-@Controller
-@RequestMapping("/api/v1/event-categories")
+@RestController
+@RequestMapping("/api/v1/event/categories")
 public class EventCategoryController {
 
     @Autowired

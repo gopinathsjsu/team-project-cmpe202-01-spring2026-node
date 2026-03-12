@@ -3,6 +3,7 @@ package com.node.eventServices.model.events;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -38,9 +39,20 @@ public class Events {
 
     private String imageUrl;
 
+    // Keep legacy LocalDate fields for compatibility
     private LocalDate eventStartDate;
 
     private LocalDate eventEndDate;
+
+    // Store absolute instants (UTC) for unambiguous scheduling
+    private Instant eventStartInstant;
+
+    private Instant eventEndInstant;
+
+    private Instant eventPublishInstant;
+
+    // Store the organizer's IANA timezone (e.g. "America/Los_Angeles") for display and calendar exports
+    private String eventTimeZone;
 
     private LocalDate createdAt;
 
@@ -52,18 +64,16 @@ public class Events {
 
     private Long approverId;
 
-    private String status; // PENDING, APPROVED, REJECTED, CANCELLED
+    private String status; // SUBMITTED, DRAFT, APPROVED, REJECTED, CANCELLED
 
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDate.now();
-        if (status == null) {
-            status = "PENDING";
-        }
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDate.now();
+
     }
 }

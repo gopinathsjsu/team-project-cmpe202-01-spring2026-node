@@ -53,5 +53,39 @@ public class EventManagementServiceImpl implements EventManagementService {
         eventRepository.deleteById(id);
     }
 
+    @Override
+    public List<Events> getEventsByStatus(String status) {
+        return eventRepository.findByStatus(status);
+    }
 
+    @Override
+    public Events approveEvent(Long eventId, Long approverId) {
+        Events event = eventRepository.findById(eventId).orElseThrow(() -> new RuntimeException("Event not found"));
+        event.setStatus("APPROVED");
+        event.setApproverId(approverId);
+        return eventRepository.save(event);
+    }
+
+    @Override
+    public Events rejectEvent(Long eventId, Long approverId) {
+        Events event = eventRepository.findById(eventId).orElseThrow(() -> new RuntimeException("Event not found"));
+        event.setStatus("REJECTED");
+        event.setApproverId(approverId);
+        return eventRepository.save(event);
+    }
+
+    @Override
+    public List<Events> getEventsByOrganizer(Long organizerId) {
+        return eventRepository.findByEventOwnerId(organizerId);
+    }
+
+    @Override
+    public List<Events> searchEvents(String name) {
+        return eventRepository.findByEventNameContainingIgnoreCase(name);
+    }
+
+    @Override
+    public List<Events> getEventsByOrganizerAndStatus(Long organizerId, String status) {
+        return eventRepository.findByEventOwnerIdAndStatus(organizerId, status);
+    }
 }
