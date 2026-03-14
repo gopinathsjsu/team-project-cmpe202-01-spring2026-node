@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"/><title>Booking Cancelled</title></head>
+<body style="font-family: Arial, sans-serif; color: #333;">
+  <h2>Your Booking Has Been Cancelled</h2>
+  <p>Hi <span th:text="${event.userName}">User</span>,</p>
+  <p>Your booking for <strong th:text="${event.eventName}">Event Name</strong> has been cancelled.</p>
+  <table style="border-collapse: collapse; width: 100%; max-width: 500px;">
+    <tr><td style="padding: 8px; border: 1px solid #ddd;">Booking ID</td><td style="padding: 8px; border: 1px solid #ddd;" th:text="${event.bookingId}"></td></tr>
+    <tr><td style="padding: 8px; border: 1px solid #ddd;">Event</td><td style="padding: 8px; border: 1px solid #ddd;" th:text="${event.eventName}"></td></tr>
+    <tr><td style="padding: 8px; border: 1px solid #ddd;">Refund Amount</td><td style="padding: 8px; border: 1px solid #ddd;" th:text="'$' + ${event.refundAmount}"></td></tr>
+  </table>
+  <p>Your refund will be processed within 5–7 business days.</p>
+</body>
+</html>

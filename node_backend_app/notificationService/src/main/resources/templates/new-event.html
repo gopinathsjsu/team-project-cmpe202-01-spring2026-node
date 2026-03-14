@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"/><title>New Event</title></head>
+<body style="font-family: Arial, sans-serif; color: #333;">
+  <h2>New Event Just Added!</h2>
+  <p>A new event is live on Node:</p>
+  <table style="border-collapse: collapse; width: 100%; max-width: 500px;">
+    <tr><td style="padding: 8px; border: 1px solid #ddd;">Event</td><td style="padding: 8px; border: 1px solid #ddd;" th:text="${event.eventName}"></td></tr>
+    <tr><td style="padding: 8px; border: 1px solid #ddd;">Organizer</td><td style="padding: 8px; border: 1px solid #ddd;" th:text="${event.organizerName}"></td></tr>
+    <tr><td style="padding: 8px; border: 1px solid #ddd;">Location</td><td style="padding: 8px; border: 1px solid #ddd;" th:text="${event.locationName}"></td></tr>
+    <tr><td style="padding: 8px; border: 1px solid #ddd;">Category</td><td style="padding: 8px; border: 1px solid #ddd;" th:text="${event.category}"></td></tr>
+    <tr><td style="padding: 8px; border: 1px solid #ddd;">Ticket Price</td><td style="padding: 8px; border: 1px solid #ddd;" th:text="${event.ticketPrice}"></td></tr>
+  </table>
+  <p>Log in to Node to book your spot.</p>
+</body>
+</html>

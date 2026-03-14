@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"/><title>You're on the Waitlist</title></head>
+<body style="font-family: Arial, sans-serif; color: #333;">
+  <h2>You're on the Waitlist</h2>
+  <p>Hi <span th:text="${event.userName}">User</span>,</p>
+  <p>You've been added to the waitlist for <strong th:text="${event.eventName}">Event Name</strong>.</p>
+  <table style="border-collapse: collapse; width: 100%; max-width: 500px;">
+    <tr><td style="padding: 8px; border: 1px solid #ddd;">Your Position</td><td style="padding: 8px; border: 1px solid #ddd;" th:text="'#' + ${event.waitlistPosition}"></td></tr>
+    <tr><td style="padding: 8px; border: 1px solid #ddd;">Event</td><td style="padding: 8px; border: 1px solid #ddd;" th:text="${event.eventName}"></td></tr>
+    <tr><td style="padding: 8px; border: 1px solid #ddd;">Tickets Requested</td><td style="padding: 8px; border: 1px solid #ddd;" th:text="${event.ticketQuantity}"></td></tr>
+  </table>
+  <p>We'll notify you if a spot opens up.</p>
+</body>
+</html>
