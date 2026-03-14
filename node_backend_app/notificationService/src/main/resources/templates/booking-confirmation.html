@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"/><title>Booking Confirmed</title></head>
+<body style="font-family: Arial, sans-serif; color: #333;">
+  <h2>Your Booking is Confirmed!</h2>
+  <p>Hi <span th:text="${event.userName}">User</span>,</p>
+  <p>You're registered for <strong th:text="${event.eventName}">Event Name</strong>.</p>
+  <table style="border-collapse: collapse; width: 100%; max-width: 500px;">
+    <tr><td style="padding: 8px; border: 1px solid #ddd;">Booking ID</td><td style="padding: 8px; border: 1px solid #ddd;" th:text="${event.bookingId}"></td></tr>
+    <tr><td style="padding: 8px; border: 1px solid #ddd;">Event</td><td style="padding: 8px; border: 1px solid #ddd;" th:text="${event.eventName}"></td></tr>
+    <tr><td style="padding: 8px; border: 1px solid #ddd;">Tickets</td><td style="padding: 8px; border: 1px solid #ddd;" th:text="${event.ticketQuantity}"></td></tr>
+    <tr><td style="padding: 8px; border: 1px solid #ddd;">Total Paid</td><td style="padding: 8px; border: 1px solid #ddd;" th:text="'$' + ${event.totalAmount}"></td></tr>
+  </table>
+  <p>See you there!</p>
+</body>
+</html>

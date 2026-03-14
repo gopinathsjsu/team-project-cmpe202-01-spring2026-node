@@ -1,0 +1,48 @@
+# ===== Java / Maven =====
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+hs_err_pid*
+
+# ===== Spring Boot =====
+application-local.properties
+application-secret.properties
+
+# ===== Node / Frontend =====
+node_modules/
+dist/
+.vite/
+
+# ===== Environment & Secrets =====
+.env
+.env.local
+.env.*.local
+**/firebase-service-account.json
+**/firebase-credentials.json
+*.pem
+*.key
+*.p12
+
+# ===== IDEs =====
+.idea/
+*.iml
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== Claude =====
+CLAUDE.md
+.claude/
+
+# ===== Misc =====
+*.tmp
+*.swp
