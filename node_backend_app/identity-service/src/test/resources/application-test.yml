@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/identity_db_test
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  flyway:
+    enabled: false
+
+app:
+  jwt:
+    secret: dGVzdC1zZWNyZXQta2V5LWZvci1ldmVudC1wbGF0Zm9ybS1pZGVudGl0eS1zZXJ2aWNlLXRlc3Q=
+    access-token-expiration-ms: 900000
+    refresh-token-expiration-ms: 1209600000
+  event-service:
+    base-url: http://localhost:8082
+    timeout-seconds: 5

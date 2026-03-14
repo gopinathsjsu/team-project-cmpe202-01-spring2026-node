@@ -1,0 +1,211 @@
+{
+  "info": {
+    "name": "Event Platform - Identity Service",
+    "description": "JWT-authenticated APIs for the Identity & Admin microservice. Run Login or Register first to get tokens.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8081/api/v1" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "eventId", "value": "replace-with-event-uuid" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{accessToken}}" }
+    ]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\",\n  \"role\": \"ATTENDEE\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register",
+            "description": "Register a new user. Role: ATTENDEE or ORGANIZER (ADMIN not allowed). Saves tokens to collection variables."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                  "    console.log('Tokens saved to collection variables');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login",
+            "description": "Login with email and password. Saves accessToken and refreshToken to collection variables."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                  "    console.log('Tokens saved to collection variables');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/refresh",
+            "description": "Get new access + refresh tokens. Use when access token expires (401). Saves new tokens."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                  "    console.log('Tokens refreshed and saved');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/logout",
+            "description": "Revoke all refresh tokens for the current user. Requires valid access token."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/me",
+            "description": "Get current user profile. Requires authentication."
+          }
+        },
+        {
+          "name": "Update My Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+1234567890\",\n  \"avatarUrl\": \"https://example.com/avatar.png\",\n  \"timezone\": \"America/Los_Angeles\"\n}"
+            },
+            "url": "{{baseUrl}}/me",
+            "description": "Update current user profile. All fields optional."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Organizer",
+      "item": [
+        {
+          "name": "Get Organizer Profile",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/organizers/me",
+            "description": "Get organizer profile. Requires ORGANIZER role."
+          }
+        },
+        {
+          "name": "Create/Update Organizer Profile",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"My Events Co\",\n  \"bio\": \"We host amazing events\",\n  \"websiteUrl\": \"https://myevents.com\",\n  \"contactEmail\": \"contact@myevents.com\",\n  \"instagramUrl\": \"https://instagram.com/myevents\"\n}"
+            },
+            "url": "{{baseUrl}}/organizers/me",
+            "description": "Create or update organizer profile. Requires ORGANIZER role."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Approve Event",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/admin/events/{{eventId}}/approve",
+            "description": "Approve an event. Requires ADMIN role. Replace {{eventId}} with actual event UUID."
+          }
+        },
+        {
+          "name": "Reject Event",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/admin/events/{{eventId}}/reject",
+            "description": "Reject an event. Requires ADMIN role. Replace {{eventId}} with actual event UUID."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/health",
+            "description": "Service health check. No auth required."
+          }
+        }
+      ]
+    }
+  ]
+}
