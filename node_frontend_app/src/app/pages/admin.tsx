@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -81,12 +81,12 @@ export function AdminPanel() {
     };
 
     const handleCancelEvent = (eventId: string) => {
-        api.updateEvent(eventId, { status: 'cancelled' });
+        api.updateEventStatus(eventId, 'cancelled');
         toast.success('Event cancelled');
     };
 
     const handleToSubmitEvent = (eventId: string) => {
-        api.updateEvent(eventId, { status: 'submitted' });
+        api.updateEventStatus(eventId, 'submitted');
         toast.success('Event submitted');
     };
 

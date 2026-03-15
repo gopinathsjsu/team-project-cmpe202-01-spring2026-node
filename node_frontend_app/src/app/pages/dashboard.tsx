@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { redirect, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -62,7 +62,7 @@ export function Dashboard() {
 
     const [events, setEvents] = useState<any[]>([]);
     const [myBookings, setMyBookings] = useState<any[]>([]);
-    let myEvents: any[] = [];
+    //let myEvents: any[] = [];
 
     const authContext = useAuth();
     const currentUser = authContext.currentUser;
@@ -209,8 +209,8 @@ export function Dashboard() {
     // Organizer Dashboard
     if (currentUser?.role === 'ORGANIZER') {
         const myEvents = Array.isArray(events) ? events : [];
-        const totalRevenue = 10;//myEvents.reduce((sum, e) => sum + (e.ticketsSold * e.price), 0);
-        const totalTicketsSold = 10;// myEvents.reduce((sum, e) => sum + e.ticketsSold, 0);
+        const totalRevenue = myEvents.reduce((sum, e) => sum + (e.ticketsSold * e.price), 0) || 0;
+        const totalTicketsSold = myEvents.reduce((sum, e) => sum + e.ticketsSold, 0) || 0;
 
         const handleDeleteEvent = (eventId: string) => {
             if (confirm('Are you sure you want to delete this event?')) {
@@ -291,10 +291,9 @@ export function Dashboard() {
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold">
-                                    10%
-                                    {/* {myEvents.length > 0
-                                        ? Math.round(myEvents.reduce((sum, e) => sum + (e.ticketsSold / e.capacity), 0) / myEvents.length * 100)
-                                        : 0}% */}
+                                    {myEvents.length > 0
+                                        ? Math.round(myEvents.reduce((sum, e) => sum + (e.ticketsSold / e.capacity), 0) / myEvents.length * 100) || 0
+                                        : 0}
                                 </div>
                             </CardContent>
                         </Card>
@@ -433,7 +432,7 @@ function EventsList({
         <div className="space-y-4">
             {events.map((event: any) => {
                 const eventBookings = getEventBookings(event.eventId);
-                const revenue = event.ticketsSold * event.price;
+                const revenue = event.ticketsSold * event.ticketPrice;
 
                 return (
                     <div key={event.eventId} className="flex items-start gap-4 p-4 border rounded-lg">
@@ -461,11 +460,11 @@ function EventsList({
                             <div className="grid grid-cols-3 gap-4 text-sm mb-3">
                                 <div>
                                     <div className="text-gray-600">Tickets Sold</div>
-                                    <div className="font-medium">{event.ticketsSold} / {event.capacity}</div>
+                                    <div className="font-medium">{event.ticketsSold || 0} / {event.maxCapacity}</div>
                                 </div>
                                 <div>
                                     <div className="text-gray-600">Revenue</div>
-                                    <div className="font-medium">${revenue.toFixed(2)}</div>
+                                    <div className="font-medium">${revenue.toFixed(2) || 0}</div>
                                 </div>
                                 <div>
                                     <div className="text-gray-600">Bookings</div>
