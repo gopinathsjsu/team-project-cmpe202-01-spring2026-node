@@ -120,6 +120,10 @@ export function runAPI() {
       const response = await axios.get(`${API_BASE_URL}/bookings`);
       return response.data;
     },
+    getEventBookings: async (eventId: string): Promise<Booking[]> => {
+      const response = await axios.get(`${API_BASE_URL}/bookings/event/${eventId}`);
+      return response.data;
+    },
     addBooking: async (booking: Booking): Promise<Booking> => {
       const response = await axios.post(`${API_BASE_URL}/bookings`, booking);
       return response.data;

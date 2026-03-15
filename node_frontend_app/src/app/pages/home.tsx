@@ -1,8 +1,8 @@
-import { Search, MapPin, Calendar, Clock, ChevronRight, Music, Laptop, GraduationCap, Trophy } from 'lucide-react';
+import { Search, MapPin, Calendar, Clock, ChevronRight, Music, Laptop, GraduationCap, Trophy, Badge } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { runAPI } from '../api';
-
+import { format } from 'date-fns';
 
 export default function Home() {
 
@@ -81,25 +81,34 @@ export default function Home() {
                             <div key={event.eventId} className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 group cursor-pointer flex flex-col">
                                 <div className="relative h-60 overflow-hidden">
                                     <span className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-lg text-sm font-semibold text-blue-600 z-10 shadow-sm">
-                                        {event.categories.length}
+                                        {event.categories && event.categories.length > 0 && event.categories.map((cat: any) => (
+                                            <Badge key={cat.categoryId || cat.categoryName || cat}>{cat.categoryName || cat.name || cat}</Badge>
+                                        ))}
                                     </span>
-                                    <img src={event.image} alt={event.eventName} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                    <img src={event.imageUrl} alt={event.eventName} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                 </div>
                                 <div className="p-6 flex flex-col flex-grow">
                                     <h3 className="text-xl font-bold mb-3 text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">{event.eventName}</h3>
 
                                     <div className="space-y-2 mb-6 text-gray-600 text-sm">
+                                        {/* Add  date and time */}
                                         <div className="flex items-center gap-2">
                                             <Calendar size={16} className="text-gray-400" />
-                                            <span>{event.startDate}</span>
+                                            <span>
+                                                {format(new Date(String(event.eventStartInstant || event.eventStartDate || event.startDate || '').replace('Z', '')), 'MMMM dd, yyyy ')}
+                                            </span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <Clock size={16} className="text-gray-400" />
-                                            <span>{event.startTime}</span>
+                                            <span>
+                                                {event.eventStartInstant ? format(new Date(String(event.eventStartInstant).replace('Z', '')), 'h:mm a') : ''}
+                                            </span>
                                         </div>
+
+
                                         <div className="flex items-center gap-2">
                                             <MapPin size={16} className="text-gray-400" />
-                                            <span>{event.location}</span>
+                                            <span> {event.eventLocation.locationAddress}</span>
                                         </div>
                                     </div>
 
