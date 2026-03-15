@@ -1,5 +1,5 @@
 import Header from './app/pages/header';
-import AppRoutes from './app/pages/routes';
+import AppRoutes from './app/routes';
 import { AuthProvider } from './app/context/AuthContext';
 
 function App() {
