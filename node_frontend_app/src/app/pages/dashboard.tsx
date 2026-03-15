@@ -209,7 +209,7 @@ export function Dashboard() {
     // Organizer Dashboard
     if (currentUser?.role === 'ORGANIZER') {
         const myEvents = Array.isArray(events) ? events : [];
-        const totalRevenue = myEvents.reduce((sum, e) => sum + (e.ticketsSold * e.price), 0) || 0;
+        const totalRevenue = myEvents.reduce((sum, e) => sum + (e.ticketsSold * e.ticketPrice), 0) || 0;
         const totalTicketsSold = myEvents.reduce((sum, e) => sum + e.ticketsSold, 0) || 0;
 
         const handleDeleteEvent = (eventId: string) => {
@@ -292,7 +292,7 @@ export function Dashboard() {
                             <CardContent>
                                 <div className="text-2xl font-bold">
                                     {myEvents.length > 0
-                                        ? Math.round(myEvents.reduce((sum, e) => sum + (e.ticketsSold / e.capacity), 0) / myEvents.length * 100) || 0
+                                        ? Math.round(myEvents.reduce((sum, e) => sum + (e.ticketsSold / e.maxCapacity), 0) / myEvents.length * 100) || 0
                                         : 0}
                                 </div>
                             </CardContent>
@@ -513,7 +513,7 @@ function EventsList({
                                     <Trash2 className="h-4 w-4 mr-1" />
                                     Delete
                                 </Button>
-                                <Button
+                                {/* <Button
                                     size="sm"
                                     variant="secondary"
                                     className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200"
@@ -521,7 +521,7 @@ function EventsList({
                                 >
                                     <Calendar className="h-4 w-4 mr-1" />
                                     Google Calendar Sync
-                                </Button>
+                                </Button> */}
                             </div>
                         </div>
                     </div>

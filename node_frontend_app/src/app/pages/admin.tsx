@@ -38,9 +38,9 @@ export function AdminPanel() {
         }).catch(console.error);
 
         setBookings([]);
-        //api.getBookings().then((data) => {
-        //    setBookings(Array.isArray(data) ? data : []);
-        //}).catch(console.error);
+        api.getBookings().then((data) => {
+            setBookings(Array.isArray(data) ? data : []);
+        }).catch(console.error);
 
     }, []);
 
@@ -58,7 +58,7 @@ export function AdminPanel() {
 
     const totalEvents = events.length;
     const publishedEvents = events.filter(e => e.status === 'published').length;
-    const totalRevenue = events.reduce((sum, e) => sum + (e.ticketsSold * e.price), 0) || 0;
+    const totalRevenue = events.reduce((sum, e) => sum + (e.ticketsSold * e.ticketPrice), 0) || 0;
     const totalTicketsSold = events.reduce((sum, e) => sum + e.ticketsSold, 0) || 0;
     const totalBookings = bookings.length;
     const confirmedBookings = bookings.filter(b => b.status === 'confirmed').length;
@@ -273,7 +273,9 @@ export function AdminPanel() {
                         ) : (
                             <div className="space-y-3">
                                 {bookings.slice(0, 10).map(booking => {
-                                    const event = events.find(e => e.id === booking.eventId);
+                                    console.log(booking, events);
+                                    const event = events.find(e => e.eventId == booking.eventId);
+                                    console.log(event + " - we found ? ");
                                     if (!event) return null;
 
                                     return (
@@ -330,7 +332,7 @@ function EventManagementList({ events, onApprove, onReject, onSuspend, onCancel,
                         <div className="flex items-start justify-between mb-2">
                             <div>
                                 <h3 className="font-semibold mb-1">{event.eventName}</h3>
-                                <p className="text-sm text-gray-600">by {event.organizerName}</p>
+                                <p className="text-sm text-gray-600">by {event.eventOwnerName}</p>
                                 <p className="text-sm text-gray-600">
                                     {format(new Date(String(event.eventStartInstant || event.eventStartDate || event.startDate || '').replace('Z', '')), 'MMM dd, yyyy')} at {event.eventStartInstant ? format(new Date(String(event.eventStartInstant).replace('Z', '')), 'h:mm a') : ''}
                                 </p>
@@ -348,7 +350,7 @@ function EventManagementList({ events, onApprove, onReject, onSuspend, onCancel,
 
                         <div className="flex items-center gap-4 text-sm mb-3">
                             <span className="text-gray-600">
-                                {event.ticketsSold || 0} / {event.capacity || event.maxCapacity || 0} tickets sold
+                                {event.ticketsSold} / {event.capacity || event.maxCapacity || 0} tickets sold
                             </span>
                             <span className="font-medium">${((event.ticketsSold || 0) * (event.ticketPrice || event.price || 0)).toFixed(2)} revenue</span>
                         </div>

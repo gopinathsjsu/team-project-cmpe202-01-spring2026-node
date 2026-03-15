@@ -84,8 +84,10 @@ export function runAPI() {
       const response = await axios.put(`${API_BASE_URL}/events/${id}/approve?approverId=${approverId}`);
       return response.data;
     },
-    rejectEvent: async (id: string, approverId: string, rejectionReason: string): Promise<Event> => {
-      const response = await axios.put(`${API_BASE_URL}/events/${id}/reject?approverId=${approverId}&rejectionReason=${rejectionReason}`);
+    rejectEvent: async (id: string, adminId: string, reason: string): Promise<Event> => {
+      const params = new URLSearchParams({ adminId });
+      if (reason) params.set('reason', reason);
+      const response = await axios.put(`${API_BASE_URL}/events/${id}/reject?${params.toString()}`);
       return response.data;
     },
     updateEventStatus: async (id: string, status: string): Promise<Event> => {
@@ -118,15 +120,53 @@ export function runAPI() {
     // Bookings
     getBookings: async (): Promise<Booking[]> => {
       const response = await axios.get(`${API_BASE_URL}/bookings`);
-      return response.data;
+      const list = Array.isArray(response.data) ? response.data : [];
+      return list.map((d: { ticketId: number; eventId: number; eventName?: string; userId: number; username?: string; quantity: number; status: string; bookingDate: string; ticketType?: string; totalPrice: number }) => ({
+        id: String(d.ticketId),
+        eventId: String(d.eventId),
+        userId: String(d.userId),
+        userName: d.username ?? '',
+        userEmail: '',
+        ticketQuantity: d.quantity,
+        totalAmount: d.totalPrice ?? 0,
+        bookingDate: d.bookingDate,
+        status: d.status === 'BOOKED' ? 'confirmed' : 'cancelled',
+      }));
     },
     getEventBookings: async (eventId: string): Promise<Booking[]> => {
       const response = await axios.get(`${API_BASE_URL}/bookings/event/${eventId}`);
-      return response.data;
+      const list = Array.isArray(response.data) ? response.data : [];
+      return list.map((d: { ticketId: number; eventId: number; eventName?: string; userId: number; username?: string; quantity: number; status: string; bookingDate: string; ticketType?: string; totalPrice: number }) => ({
+        id: String(d.ticketId),
+        eventId: String(d.eventId),
+        userId: String(d.userId),
+        userName: d.username ?? '',
+        userEmail: '',
+        ticketQuantity: d.quantity,
+        totalAmount: d.totalPrice ?? 0,
+        bookingDate: d.bookingDate,
+        status: d.status === 'BOOKED' ? 'confirmed' : 'cancelled',
+      }));
     },
     addBooking: async (booking: Booking): Promise<Booking> => {
-      const response = await axios.post(`${API_BASE_URL}/bookings`, booking);
-      return response.data;
+      const response = await axios.post(`${API_BASE_URL}/bookings/book`, {
+        eventId: Number(booking.eventId),
+        userId: Number(booking.userId),
+        quantity: booking.ticketQuantity,
+        ticketType: 'General',
+      });
+      const d = response.data;
+      return {
+        id: String(d.ticketId),
+        eventId: String(d.eventId),
+        userId: String(d.userId),
+        userName: d.username ?? booking.userName,
+        userEmail: booking.userEmail ?? '',
+        ticketQuantity: d.quantity,
+        totalAmount: d.totalPrice ?? 0,
+        bookingDate: d.bookingDate,
+        status: d.status === 'BOOKED' ? 'confirmed' : 'cancelled',
+      };
     },
     cancelBooking: async (id: string): Promise<void> => {
       await axios.put(`${API_BASE_URL}/bookings/${id}/cancel`);
@@ -134,7 +174,22 @@ export function runAPI() {
 
     getUserBookings: async (userId: string): Promise<Booking[]> => {
       const response = await axios.get(`${API_BASE_URL}/bookings/user/${userId}`);
-      return response.data;
+      const list = Array.isArray(response.data) ? response.data : [];
+      return list.map((d: { ticketId: number; eventId: number; eventName?: string; userId: number; username?: string; quantity: number; status: string; bookingDate: string; ticketType?: string; totalPrice: number }) => ({
+        id: String(d.ticketId),
+        eventId: String(d.eventId),
+        userId: String(d.userId),
+        userName: d.username ?? '',
+        userEmail: '',
+        ticketQuantity: d.quantity,
+        totalAmount: d.totalPrice ?? 0,
+        bookingDate: d.bookingDate,
+        status: d.status === 'BOOKED' ? 'confirmed' : 'cancelled',
+      }));
+    },
+
+    cancelBookingByUserIdAndEventId: async (userId: string, eventId: string): Promise<void> => {
+      await axios.put(`${API_BASE_URL}/bookings/${userId}/${eventId}/cancel`);
     },
 
     // Users
