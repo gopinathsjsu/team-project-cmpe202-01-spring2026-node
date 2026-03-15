@@ -1,0 +1,338 @@
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import { Calendar, MapPin, Users, Tag, ArrowLeft, Share2, Heart } from 'lucide-react';
+import { format } from 'date-fns';
+import { toast } from 'sonner';
+import { useAuth } from '../context/AuthContext';
+import { runAPI } from '../api';
+import { EventMap } from '../components/EventMap';
+import { AddToCalendar } from '../components/AddToCalender';
+import { BookingModal } from '../components/BookingModal';
+
+export function EventDetail() {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    //const { events, getEventBookings } = useEvents();
+    const { currentUser } = useAuth();
+    const [bookingModalOpen, setBookingModalOpen] = useState(false);
+    const api = runAPI();
+    const [event, setEvent] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [bookings, setBookings] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (!id) return;
+        setLoading(true);
+        Promise.all([
+            api.getEventById(id).catch(() => null),
+            api.getEventBookings(id).catch(() => [])
+        ]).then(([eventData, bookings]) => {
+            setEvent(eventData);
+            setBookings(bookings);
+            setLoading(false);
+        });
+    }, [id]);
+
+    //const attendeeCount = bookings.reduce((sum, b) => sum + b.ticketQuantity, 0) || 0;
+
+    if (loading) {
+        return (
+            <div className="container mx-auto px-4 py-16 text-center">
+                <p>Loading event details...</p>
+            </div>
+        );
+    }
+
+    if (!event) {
+        return (
+            <div className="container mx-auto px-4 py-16 text-center">
+                <h2 className="text-2xl font-bold mb-4">Event not found</h2>
+                <Button onClick={() => navigate('/events')}>Browse Events</Button>
+            </div>
+        );
+    }
+
+    const availableTickets = (event.maxCapacity || event.capacity || 0) - (event.ticketsSold || 0);
+    const percentageSold = ((event.ticketsSold || 0) / (event.maxCapacity || event.capacity || 1)) * 100;
+
+    const handleShare = () => {
+        navigator.clipboard.writeText(window.location.href);
+        toast.success('Link copied to clipboard!');
+    };
+
+    return (
+        <div className="min-h-screen bg-background text-foreground">
+            <div className="container mx-auto px-4 py-8">
+                <Button
+                    variant="ghost"
+                    onClick={() => navigate(-1)}
+                    className="mb-6"
+                >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back
+                </Button>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Main Content */}
+                    <div className="lg:col-span-2 space-y-6">
+                        <div className="bg-card text-card-foreground border rounded-lg overflow-hidden shadow-sm">
+                            <div className="aspect-video overflow-hidden bg-muted">
+                                <img
+                                    src={event.imageUrl}
+                                    alt={event.eventName}
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+
+                            <div className="p-6">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex-1">
+                                        <div className="flex gap-2 mb-3">
+                                            {event.categories && event.categories.length > 0 && event.categories.map((cat: any) => (
+                                                <Badge key={cat.categoryId || cat.categoryName || cat}>{cat.categoryName || cat.name || cat}</Badge>
+                                            ))}
+                                        </div>
+                                        <h1 className="text-3xl font-bold mb-2">{event.eventName}</h1>
+                                        <p className="text-muted-foreground">Organized by {event.eventOwnerId || event.organizerName || 'Organizer'}</p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Button variant="outline" size="icon" onClick={handleShare}>
+                                            <Share2 className="h-4 w-4" />
+                                        </Button>
+                                        <Button variant="outline" size="icon">
+                                            <Heart className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-6 border-y border-border">
+                                    <div className="flex items-start gap-3">
+                                        <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+                                        <div>
+                                            <div className="font-medium">Date & Time</div>
+                                            <div className="text-muted-foreground">
+                                                {format(new Date(String(event.eventStartInstant || event.eventStartDate || event.startDate || '').replace('Z', '')), 'MMMM dd, yyyy ')}
+                                                {event.eventStartInstant ? format(new Date(String(event.eventStartInstant).replace('Z', '')), 'h:mm a') : ''}
+                                            </div>
+                                            <div className="text-muted-foreground">
+                                                {event.eventEndInstant ? format(new Date(String(event.eventEndInstant).replace('Z', '')), 'MMMM dd, yyyy ') : ''}
+                                                {event.eventEndInstant ? format(new Date(String(event.eventEndInstant).replace('Z', '')), 'h:mm a') : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-start gap-3">
+                                        <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+                                        <div>
+                                            <div className="font-medium">Location</div>
+                                            <div className="text-muted-foreground">{event.eventLocation?.locationName || (event.location as any)?.name || ''}</div>
+                                            <div className="text-muted-foreground">{event.eventLocation?.locationAddress || (event.location as any)?.address || (typeof event.location === 'string' ? event.location : '') || ''}</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="py-6">
+                                    <h2 className="text-xl font-bold mb-4">About this event</h2>
+                                    <p className="text-foreground/80 whitespace-pre-line leading-relaxed">
+                                        {event.eventDescription}
+                                    </p>
+                                </div>
+
+                                {event.tags && event.tags.length > 0 && (
+                                    <div className="py-6 border-t border-border">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <Tag className="h-5 w-5 text-muted-foreground" />
+                                            <h3 className="font-medium">Tags</h3>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {event.tags.map((tag: any) => (
+                                                <Badge key={tag} variant="secondary">
+                                                    {tag}
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="bg-card text-card-foreground border rounded-lg shadow-sm p-6">
+                            <h2 className="text-xl font-bold mb-4">Event Location</h2>
+                            <EventMap
+                                location={event.eventLocation?.locationAddress || (event.location as any)?.address || (typeof event.location === 'string' ? event.location : '') || ''}
+                                venue={event.eventLocation?.locationName || event.venue || (event.location as any)?.name || ''}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Sidebar */}
+                    <div className="lg:col-span-1">
+                        <div className="bg-card text-card-foreground border rounded-lg shadow-sm p-6 sticky top-24">
+                            <div className="mb-6">
+                                {event.ticketPrice === 0 ? (
+                                    <div className="text-3xl font-bold text-emerald-500">Free</div>
+                                ) : (
+                                    <div className="text-3xl font-bold">${event.ticketPrice}</div>
+                                )}
+                                <div className="text-sm text-muted-foreground">per ticket</div>
+                            </div>
+
+                            <div className="space-y-4 mb-6">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                        <Users className="h-4 w-4" />
+                                        <span className="text-sm">Tickets Available</span>
+                                    </div>
+                                    <span className="font-medium">{availableTickets}</span>
+                                </div>
+
+                                {percentageSold > 0 && (
+                                    <div>
+                                        <div className="flex items-center justify-between mb-2 text-sm">
+                                            <span className="text-muted-foreground">Tickets Sold</span>
+                                            <span className="font-medium">{Math.round(percentageSold)}%</span>
+                                        </div>
+                                        <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-primary rounded-full transition-all"
+                                                style={{ width: `${percentageSold}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {percentageSold > 70 && availableTickets > 0 && (
+                                    <Badge variant="destructive" className="w-full justify-center">
+                                        Selling Fast!
+                                    </Badge>
+                                )}
+                            </div>
+
+                            {event.status === 'published' && currentUser?.role === 'USER' && availableTickets > 0 ? (
+                                <Button
+                                    className="w-full"
+                                    size="lg"
+                                    onClick={() => setBookingModalOpen(true)}
+                                >
+                                    Get Tickets
+                                </Button>
+                            ) : event.status === 'cancelled' ? (
+                                <Button className="w-full" size="lg" disabled>
+                                    Event Cancelled
+                                </Button>
+                            ) : ((availableTickets === 0) ? (
+                                <Button className="w-full" size="lg" disabled>
+                                    Sold Out
+                                </Button>
+                            ) : (<></>
+                                // <Button className="w-full" size="lg" disabled>
+                                //     Sold Out
+                                // </Button>
+                            )
+                            )}
+
+                            {currentUser?.role === 'ORGANIZER' && event.organizerId === currentUser.id && (
+                                <Button
+                                    variant="outline"
+                                    className="w-full mt-3"
+                                    onClick={() => navigate(`/dashboard`)}
+                                >
+                                    Manage Event
+                                </Button>
+                            )}
+
+                            {/* Add to Calendar */}
+                            <div className="mt-3 mb-6">
+                                <AddToCalendar event={event} variant="outline" className="w-full" />
+                            </div>
+
+                            {(currentUser?.role === 'ADMIN' || (currentUser?.role === 'ORGANIZER' && event.eventOwnerId === currentUser?.id)) && (
+                                <div className="mt-6 pt-6 border-t border-border">
+                                    <h3 className="font-medium mb-3">Organizer Details</h3>
+                                    <div className="space-y-3 text-sm">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground">Capacity</span>
+                                            <span className="font-medium">{event.maxCapacity || event.capacity || 0}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground">Attendees</span>
+                                            <span className="font-medium">{bookings.length}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground">Revenue</span>
+                                            <span className="font-medium">${(bookings.length * (event.ticketPrice || event.price || 0)).toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground">Status</span>
+                                            <Badge variant={event.status?.toLowerCase() === 'published' ? 'default' : 'secondary'}>
+                                                {event.status}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {currentUser?.role === 'ADMIN' && (
+                                <div className="mt-6 pt-6 border-t border-border">
+                                    <h3 className="font-medium mb-3">Admin Actions</h3>
+                                    <div className="space-y-2">
+                                        {event.status?.toLowerCase() !== 'published' && (
+                                            <Button
+                                                variant="outline"
+                                                className="w-full text-green-600 border-green-600 hover:bg-green-50"
+                                                onClick={() => {
+                                                    api.updateEventStatus(event.eventId || id || '', 'published').then(() => {
+                                                        toast.success('Event published');
+                                                        setEvent({ ...event, status: 'published' });
+                                                    });
+                                                }}
+                                            >
+                                                Publish Event
+                                            </Button>
+                                        )}
+                                        {event.status?.toLowerCase() === 'published' && (
+                                            <Button
+                                                variant="outline"
+                                                className="w-full text-red-600 border-red-600 hover:bg-red-50"
+                                                onClick={() => {
+                                                    api.updateEventStatus(event.eventId || id || '', 'submitted').then(() => {
+                                                        toast.success('Event unpublished and set to submitted');
+                                                        setEvent({ ...event, status: 'submitted' });
+                                                    });
+                                                }}
+                                            >
+                                                Unpublish Event
+                                            </Button>
+                                        )}
+                                        {event.status?.toLowerCase() !== 'cancelled' && (
+                                            <Button
+                                                variant="outline"
+                                                className="w-full text-red-600 border-red-600 hover:bg-red-50"
+                                                onClick={() => {
+                                                    api.updateEventStatus(event.eventId || id || '', 'cancelled').then(() => {
+                                                        toast.success('Event cancelled');
+                                                        setEvent({ ...event, status: 'cancelled' });
+                                                    });
+                                                }}
+                                            >
+                                                Cancel Event
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <BookingModal
+                event={event}
+                open={bookingModalOpen}
+                onClose={() => setBookingModalOpen(false)}
+            />
+        </div>
+    );
+}

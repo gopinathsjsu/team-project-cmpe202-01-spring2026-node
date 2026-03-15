@@ -33,10 +33,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const getCurrentUser = () => {
-        return currentUser;
-    };
-
     const logout = () => {
         handleSetUser(null);
     };
