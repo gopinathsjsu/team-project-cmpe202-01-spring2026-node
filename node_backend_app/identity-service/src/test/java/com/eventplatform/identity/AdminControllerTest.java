@@ -1,6 +1,9 @@
 package com.eventplatform.identity.controller;
 
 import com.eventplatform.identity.dto.response.MessageResponse;
+import com.eventplatform.identity.dto.response.PagedUsersResponse;
+import com.eventplatform.identity.dto.response.UserResponse;
+import com.eventplatform.identity.dto.request.CreateAdminRequest;
 import com.eventplatform.identity.entity.Role;
 import com.eventplatform.identity.security.UserPrincipal;
 import com.eventplatform.identity.service.AdminService;
@@ -112,5 +115,45 @@ class AdminControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isEqualTo(expected);
         verify(adminService).rejectEvent(EVENT_ID, ADMIN_ID, "203.0.113.99");
+    }
+
+    @Test
+    void getAllUsers_normalizesPageAndSizeBeforeDelegating() {
+        PagedUsersResponse expected = PagedUsersResponse.builder()
+                .page(0)
+                .size(100)
+                .totalElements(0)
+                .totalPages(0)
+                .hasNext(false)
+                .build();
+        when(adminService.getAllUsers(0, 100)).thenReturn(expected);
+
+        ResponseEntity<PagedUsersResponse> response = adminController.getAllUsers(-5, 999);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isEqualTo(expected);
+        verify(adminService).getAllUsers(0, 100);
+    }
+
+    @Test
+    void createAdmin_usesForwardedIpAndDelegates() {
+        CreateAdminRequest request = CreateAdminRequest.builder()
+                .email("newadmin@test.com")
+                .password("Password123!")
+                .build();
+        UserResponse expected = UserResponse.builder()
+                .email("newadmin@test.com")
+                .active(true)
+                .role(Role.ADMIN)
+                .build();
+        when(httpRequest.getHeader("X-Forwarded-For")).thenReturn("203.0.113.50, 10.0.0.1");
+        when(adminService.createAdmin(eq(request), eq(ADMIN_ID), eq("203.0.113.50")))
+                .thenReturn(expected);
+
+        ResponseEntity<UserResponse> response = adminController.createAdmin(request, principal, httpRequest);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isEqualTo(expected);
+        verify(adminService).createAdmin(request, ADMIN_ID, "203.0.113.50");
     }
 }
