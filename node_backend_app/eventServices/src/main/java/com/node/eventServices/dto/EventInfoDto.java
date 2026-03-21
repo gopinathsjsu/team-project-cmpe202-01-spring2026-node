@@ -1,6 +1,7 @@
 package com.node.eventServices.dto;
 
 
+import com.node.eventServices.model.events.EventStatus;
 import lombok.Builder;
 import lombok.Data;
 
@@ -36,6 +37,6 @@ public class EventInfoDto {
 
     private Long eventOwnerId;
     private String eventOwnerName;
-    private String status;
+    private EventStatus status;
     private Long ticketsSold;
 }
