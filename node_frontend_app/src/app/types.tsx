@@ -42,10 +42,10 @@ export interface Event {
   eventTimeZone: string;
   eventPublishDate: string;
   updatedAt: string | null;
-  status: 'draft' | 'submitted' | 'approved' | 'rejected' | 'cancelled' | 'published';
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'PUBLISHED' | 'COMPLETED' | 'SUSPENDED';
   tags: string[];
   createdAt: string | null;
-
+  eventOwnerName?: string;
 }
 
 export interface Booking {

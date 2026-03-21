@@ -72,6 +72,10 @@ export function runAPI() {
       const response = await axios.get(`${API_BASE_URL}/events`);
       return response.data;
     },
+    getActiveEvents: async (): Promise<Event[]> => {
+      const response = await axios.get(`${API_BASE_URL}/events/activeEvents`);
+      return response.data;
+    },
     getEventById: async (id: string): Promise<Event> => {
       const response = await axios.get(`${API_BASE_URL}/events/${id}`);
       return response.data;
@@ -91,7 +95,7 @@ export function runAPI() {
       return response.data;
     },
     updateEventStatus: async (id: string, status: string): Promise<Event> => {
-      const response = await axios.put(`${API_BASE_URL}/events/${id}/status?status=${status}`);
+      const response = await axios.patch(`${API_BASE_URL}/events/${id}/status?status=${status}`);
       return response.data;
     },
     updateEvent: async (id: string, event: Partial<Event>): Promise<Event> => {

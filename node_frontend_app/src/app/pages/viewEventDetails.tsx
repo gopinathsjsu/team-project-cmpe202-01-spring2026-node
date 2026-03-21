@@ -54,12 +54,30 @@ export function EventDetail() {
         );
     }
 
-    const availableTickets = (event.maxCapacity || event.capacity || 0) - (event.ticketsSold || 0);
-    const percentageSold = ((event.ticketsSold || 0) / (event.maxCapacity || event.capacity || 1)) * 100;
+    // Backend may not return ticketsSold; derive from bookings (ticket list) when missing
+    const ticketsSold = typeof event.ticketsSold === 'number'
+        ? event.ticketsSold
+        : bookings.reduce((sum, b) => sum + (b.ticketQuantity ?? 0), 0);
+    const maxCapacity = event.maxCapacity ?? event.capacity ?? 0;
+    const availableTickets = Math.max(0, maxCapacity - ticketsSold);
+    const percentageSold = maxCapacity > 0 ? (ticketsSold / maxCapacity) * 100 : 0;
+    const isBookable = event.status === 'published' || event.status === 'APPROVED';
 
+    const isAlreadyBooked = bookings.some(b => (String(b.eventId) === String(event.eventId || id) && String(b.userId) === String(currentUser?.id) && b.status === 'confirmed'));
     const handleShare = () => {
         navigator.clipboard.writeText(window.location.href);
         toast.success('Link copied to clipboard!');
+    };
+
+    const cancelBookingByUserIdAndEventId = (userId: string, eventId: string) => {
+        api.cancelBookingByUserIdAndEventId(userId, eventId).then(() => {
+            toast.success('Booking cancelled successfully!');
+            // Refresh bookings to instantly update the UI switch
+            api.getEventBookings(eventId).then(setBookings).catch(console.error);
+        }).catch((err) => {
+            console.error(err);
+            toast.error('Failed to cancel booking.');
+        });
     };
 
     return (
@@ -95,7 +113,7 @@ export function EventDetail() {
                                             ))}
                                         </div>
                                         <h1 className="text-3xl font-bold mb-2">{event.eventName}</h1>
-                                        <p className="text-muted-foreground">Organized by {event.eventOwnerId || event.organizerName || 'Organizer'}</p>
+                                        <p className="text-muted-foreground">Organized by {event.eventOwnerName || 'Organizer'}</p>
                                     </div>
                                     <div className="flex gap-2">
                                         <Button variant="outline" size="icon" onClick={handleShare}>
@@ -210,15 +228,16 @@ export function EventDetail() {
                                 )}
                             </div>
 
-                            {event.status === 'published' && currentUser?.role === 'USER' && availableTickets > 0 ? (
-                                <Button
-                                    className="w-full"
-                                    size="lg"
-                                    onClick={() => setBookingModalOpen(true)}
-                                >
-                                    Get Tickets
-                                </Button>
-                            ) : event.status === 'cancelled' ? (
+                            {isBookable && currentUser?.role === 'USER' && availableTickets > 0 ? (
+                                <>
+                                    {isAlreadyBooked ? (<Button className="w-full" size="lg" onClick={() => cancelBookingByUserIdAndEventId(currentUser.id, event.eventId)}>
+                                        Cancel Booking</Button>)
+                                        : <Button className="w-full" size="lg" onClick={() => setBookingModalOpen(true)}>
+                                            Get Tickets</Button>
+                                    }
+
+                                </>
+                            ) : event.status === 'cancelled' || event.status === 'CANCELLED' ? (
                                 <Button className="w-full" size="lg" disabled>
                                     Event Cancelled
                                 </Button>
@@ -297,23 +316,23 @@ export function EventDetail() {
                                                 variant="outline"
                                                 className="w-full text-red-600 border-red-600 hover:bg-red-50"
                                                 onClick={() => {
-                                                    api.updateEventStatus(event.eventId || id || '', 'submitted').then(() => {
+                                                    api.updateEventStatus(event.eventId || id || '', 'SUBMITTED').then(() => {
                                                         toast.success('Event unpublished and set to submitted');
-                                                        setEvent({ ...event, status: 'submitted' });
+                                                        setEvent({ ...event, status: 'SUBMITTED' });
                                                     });
                                                 }}
                                             >
                                                 Unpublish Event
                                             </Button>
                                         )}
-                                        {event.status?.toLowerCase() !== 'cancelled' && (
+                                        {event.status?.toLowerCase() !== 'CANCELLED' && (
                                             <Button
                                                 variant="outline"
                                                 className="w-full text-red-600 border-red-600 hover:bg-red-50"
                                                 onClick={() => {
-                                                    api.updateEventStatus(event.eventId || id || '', 'cancelled').then(() => {
+                                                    api.updateEventStatus(event.eventId || id || '', 'CANCELLED').then(() => {
                                                         toast.success('Event cancelled');
-                                                        setEvent({ ...event, status: 'cancelled' });
+                                                        setEvent({ ...event, status: 'CANCELLED' });
                                                     });
                                                 }}
                                             >
@@ -329,7 +348,7 @@ export function EventDetail() {
             </div>
 
             <BookingModal
-                event={event}
+                event={{ ...event, ticketsSold, maxCapacity: maxCapacity || event.maxCapacity }}
                 open={bookingModalOpen}
                 onClose={() => setBookingModalOpen(false)}
             />

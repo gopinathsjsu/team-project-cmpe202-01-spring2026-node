@@ -76,17 +76,17 @@ export function AdminPanel() {
     };
 
     const handleSuspendEvent = (eventId: string) => {
-        api.updateEvent(eventId, { status: 'cancelled' });
+        api.updateEvent(eventId, { status: 'SUSPENDED' });
         toast.success('Event suspended');
     };
 
     const handleCancelEvent = (eventId: string) => {
-        api.updateEventStatus(eventId, 'cancelled');
+        api.updateEventStatus(eventId, 'CANCELLED');
         toast.success('Event cancelled');
     };
 
     const handleToSubmitEvent = (eventId: string) => {
-        api.updateEventStatus(eventId, 'submitted');
+        api.updateEventStatus(eventId, 'SUBMITTED');
         toast.success('Event submitted');
     };
 
