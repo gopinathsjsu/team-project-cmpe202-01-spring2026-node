@@ -64,7 +64,8 @@ public class Events {
 
     private Long approverId;
 
-    private String status; // SUBMITTED, DRAFT, APPROVED, REJECTED, CANCELLED
+    @Enumerated(EnumType.STRING)
+    private EventStatus status; // SUBMITTED, DRAFT, APPROVED, REJECTED, CANCELLED
 
     @PrePersist
     protected void onCreate() {
