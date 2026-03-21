@@ -209,7 +209,7 @@ export function Dashboard() {
     // Organizer Dashboard
     if (currentUser?.role === 'ORGANIZER') {
         const myEvents = Array.isArray(events) ? events : [];
-        const totalRevenue = myEvents.reduce((sum, e) => sum + (e.ticketsSold * e.price), 0) || 0;
+        const totalRevenue = myEvents.reduce((sum, e) => sum + (e.ticketsSold * e.ticketPrice), 0) || 0;
         const totalTicketsSold = myEvents.reduce((sum, e) => sum + e.ticketsSold, 0) || 0;
 
         const handleDeleteEvent = (eventId: string) => {
@@ -292,7 +292,7 @@ export function Dashboard() {
                             <CardContent>
                                 <div className="text-2xl font-bold">
                                     {myEvents.length > 0
-                                        ? Math.round(myEvents.reduce((sum, e) => sum + (e.ticketsSold / e.capacity), 0) / myEvents.length * 100) || 0
+                                        ? Math.round(myEvents.reduce((sum, e) => sum + (e.ticketsSold / e.maxCapacity), 0) / myEvents.length * 100) || 0
                                         : 0}
                                 </div>
                             </CardContent>
@@ -310,20 +310,23 @@ export function Dashboard() {
                                 <TabsList className="mb-4">
                                     <TabsTrigger value="all">All Events ({myEvents.length})</TabsTrigger>
                                     <TabsTrigger value="published">
-                                        Published ({myEvents.filter(e => e.status.toLowerCase() === 'published').length})
+                                        Published ({myEvents.filter(e => e.status === 'PUBLISHED').length})
                                     </TabsTrigger>
                                     <TabsTrigger value="submitted">
-                                        Submitted ({myEvents.filter(e => e.status.toLowerCase() === 'submitted').length})
+                                        Submitted ({myEvents.filter(e => e.status === 'SUBMITTED').length})
                                     </TabsTrigger>
                                     <TabsTrigger value="completed">
-                                        Completed ({myEvents.filter(e => e.status.toLowerCase() === 'completed').length})
-                                    </TabsTrigger>
-                                    <TabsTrigger value="rejected">
-                                        Rejected ({myEvents.filter(e => e.status.toLowerCase() === 'rejected').length})
+                                        Completed ({myEvents.filter(e => e.status === 'COMPLETED').length})
                                     </TabsTrigger>
                                     <TabsTrigger value="draft">
-                                        Drafts ({myEvents.filter(e => e.status.toLowerCase() === 'draft').length})
+                                        Drafts ({myEvents.filter(e => e.status === 'DRAFT').length})
                                     </TabsTrigger>
+                                    <TabsTrigger value="rejected">
+                                        Rejected ({myEvents.filter(e => e.status === 'REJECTED' || e.status === 'CANCELLED').length})
+                                    </TabsTrigger>
+                                    {/* <TabsTrigger value="cancelled">
+                                        Cancelled ({myEvents.filter(e => e.status === 'CANCELLED').length})
+                                    </TabsTrigger> */}
                                 </TabsList>
 
                                 <TabsContent value="all">
@@ -338,7 +341,7 @@ export function Dashboard() {
 
                                 <TabsContent value="published">
                                     <EventsList
-                                        events={myEvents.filter(e => e.status === 'published')}
+                                        events={myEvents.filter(e => e.status === 'PUBLISHED')}
                                         onDelete={handleDeleteEvent}
                                         onToggleStatus={handleToggleStatus}
                                         getEventBookings={getEventBookings}
@@ -348,7 +351,7 @@ export function Dashboard() {
 
                                 <TabsContent value="draft">
                                     <EventsList
-                                        events={myEvents.filter(e => e.status === 'draft')}
+                                        events={myEvents.filter(e => e.status === 'DRAFT')}
                                         onDelete={handleDeleteEvent}
                                         onToggleStatus={handleToggleStatus}
                                         getEventBookings={getEventBookings}
@@ -357,25 +360,25 @@ export function Dashboard() {
                                 </TabsContent>
                                 <TabsContent value="submitted">
                                     <EventsList
-                                        events={myEvents.filter(e => e.status === 'submitted')}
+                                        events={myEvents.filter(e => e.status === 'SUBMITTED')}
                                         onDelete={handleDeleteEvent}
                                         onToggleStatus={handleToggleStatus}
                                         getEventBookings={getEventBookings}
                                         navigate={navigate}
                                     />
                                 </TabsContent>
-                                <TabsContent value="cancelled">
+                                {/* <TabsContent value="cancelled">
                                     <EventsList
-                                        events={myEvents.filter(e => e.status === 'cancelled')}
+                                        events={myEvents.filter(e => e.status === 'CANCELLED')}
                                         onDelete={handleDeleteEvent}
                                         onToggleStatus={handleToggleStatus}
                                         getEventBookings={getEventBookings}
                                         navigate={navigate}
                                     />
-                                </TabsContent>
+                                </TabsContent> */}
                                 <TabsContent value="rejected">
                                     <EventsList
-                                        events={myEvents.filter(e => e.status === 'rejected')}
+                                        events={myEvents.filter(e => e.status === 'REJECTED' || e.status === 'CANCELLED')}
                                         onDelete={handleDeleteEvent}
                                         onToggleStatus={handleToggleStatus}
                                         getEventBookings={getEventBookings}
@@ -384,7 +387,7 @@ export function Dashboard() {
                                 </TabsContent>
                                 <TabsContent value="completed">
                                     <EventsList
-                                        events={myEvents.filter(e => e.status === 'completed')}
+                                        events={myEvents.filter(e => e.status === 'COMPLETED')}
                                         onDelete={handleDeleteEvent}
                                         onToggleStatus={handleToggleStatus}
                                         getEventBookings={getEventBookings}
@@ -452,7 +455,7 @@ function EventsList({
                                         {format(new Date(String(event.eventStartInstant || event.eventStartDate || '').replace('Z', '')), 'MMM dd, yyyy')} at {event.eventStartInstant ? format(new Date(String(event.eventStartInstant).replace('Z', '')), 'h:mm a') : ''}
                                     </p>
                                 </div>
-                                <Badge variant={event.status === 'published' ? 'default' : 'secondary'}>
+                                <Badge variant={event.status === 'PUBLISHED' ? 'default' : 'secondary'}>
                                     {event.status}
                                 </Badge>
                             </div>
@@ -489,7 +492,7 @@ function EventsList({
                                     <Edit className="h-4 w-4 mr-1" />
                                     Edit
                                 </Button>
-                                {event.status.toLowerCase() === 'approved' &&
+                                {event.status === 'APPROVED' &&
                                     <Button
                                         size="sm"
                                         variant="outline"
@@ -497,7 +500,7 @@ function EventsList({
                                     >
                                         Publish
                                     </Button>}
-                                {event.status.toLowerCase() === 'published' &&
+                                {event.status === 'PUBLISHED' &&
                                     <Button
                                         size="sm"
                                         variant="outline"
@@ -513,7 +516,7 @@ function EventsList({
                                     <Trash2 className="h-4 w-4 mr-1" />
                                     Delete
                                 </Button>
-                                <Button
+                                {/* <Button
                                     size="sm"
                                     variant="secondary"
                                     className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200"
@@ -521,7 +524,7 @@ function EventsList({
                                 >
                                     <Calendar className="h-4 w-4 mr-1" />
                                     Google Calendar Sync
-                                </Button>
+                                </Button> */}
                             </div>
                         </div>
                     </div>
