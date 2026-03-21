@@ -8,6 +8,7 @@ import { Dashboard } from './pages/dashboard';
 import { AdminPanel } from './pages/admin';
 import { EditEvent } from './pages/editEvent';
 import { EventDetail } from './pages/viewEventDetails';
+import { AllEvents } from './pages/events';
 
 export default function AppRoutes() {
     return (
@@ -34,6 +35,7 @@ export default function AppRoutes() {
             />
             <Route path="/admin" element={<AdminPanel />} />
             <Route path="/events/:id" element={<EventDetail />} />
+            <Route path="/events" element={<AllEvents />} />
 
         </Routes>
     );

@@ -167,7 +167,7 @@ export function CreateEvent() {
     return null;
   }
 
-  const handleSubmit = (e: React.FormEvent, status: 'draft' | 'submitted') => {
+  const handleSubmit = (e: React.FormEvent, status: 'DRAFT' | 'SUBMITTED') => {
     e.preventDefault();
 
     if (!formData.eventName || formData.categories.length === 0 || !formData.startDate || !formData.startTime || !formData.endDate || !formData.endTime || !formData.eventTimeZone || !formData.location) {
@@ -202,7 +202,7 @@ export function CreateEvent() {
       eventPublishDate: new Date().toISOString(),
       eventOwnerId: currentUser?.id,
       ticketsSold: 0,
-      status,
+      status: status === 'DRAFT' ? 'DRAFT' : 'SUBMITTED',
       createdAt: new Date().toISOString(),
       approverId: null,
       updatedAt: null,
@@ -210,7 +210,7 @@ export function CreateEvent() {
     };
 
     api.addEvent(newEvent);
-    toast.success(`Event ${status === 'draft' ? 'saved as draft' : 'submitted'} successfully!`);
+    toast.success(`Event ${status === 'DRAFT' ? 'saved as draft' : 'submitted'} successfully!`);
     navigate('/dashboard');
   };
 
@@ -568,7 +568,7 @@ export function CreateEvent() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={(e) => handleSubmit(e, 'draft')}
+                    onClick={(e) => handleSubmit(e, 'DRAFT')}
                     className="flex-1"
                   >
                     Save as Draft
@@ -576,7 +576,7 @@ export function CreateEvent() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={(e) => handleSubmit(e, 'submitted')}
+                    onClick={(e) => handleSubmit(e, 'SUBMITTED')}
                     className="flex-1"
                   >
                     Submit for Review

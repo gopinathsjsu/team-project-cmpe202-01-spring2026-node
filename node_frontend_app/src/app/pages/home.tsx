@@ -114,9 +114,9 @@ export default function Home() {
 
                                     <div className="mt-auto pt-4 border-t border-gray-100 flex items-center justify-between">
                                         <span className="text-xl font-bold text-gray-900">{event.ticketPrice}</span>
-                                        <button className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-md shadow-blue-500/30">
+                                        <a className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-md shadow-blue-500/30" href={`/events/${event.eventId}`}>
                                             Get Tickets
-                                        </button>
+                                        </a>
                                     </div>
                                 </div>
                             </div>

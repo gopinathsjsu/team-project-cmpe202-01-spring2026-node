@@ -6,12 +6,12 @@
   --font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
 
 
-  --primary: #6366f1;
+  --brand-primary: #6366f1;
   /* Indigo */
-  --primary-hover: #4f46e5;
-  --primary-glow: rgba(99, 102, 241, 0.4);
+  --brand-primary-hover: #4f46e5;
+  --brand-primary-glow: rgba(99, 102, 241, 0.4);
 
-  --secondary: #ec4899;
+  --brand-secondary: #ec4899;
   /* Pink */
 
   --text-primary: #ffffff;
@@ -38,13 +38,13 @@ body {
 }
 
 a {
-  color: var(--primary);
+  color: var(--brand-primary);
   text-decoration: none;
   transition: color 0.2s ease;
 }
 
 a:hover {
-  color: var(--primary-hover);
+  color: var(--brand-primary-hover);
 }
 
 button {
