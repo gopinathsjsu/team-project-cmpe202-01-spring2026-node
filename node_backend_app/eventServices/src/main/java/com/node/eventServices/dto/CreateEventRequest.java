@@ -1,27 +1,37 @@
 package com.node.eventServices.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
 @Data
 public class CreateEventRequest {
+
+    @NotBlank(message = "Event name is required")
     private String eventName;
     private String eventDescription;
-    private List<Long> categories; // category IDs
+
+    private List<Long> categories;
+
+    @Positive(message = "Max capacity must be positive")
     private Long maxCapacity;
     private Long waitlistCapacity;
     private EventLocationDto eventLocation;
-    private String ticketPrice;
+
+    private BigDecimal ticketPrice;
+
     private String imageUrl;
     // legacy date-only fields (optional)
     private LocalDate eventStartDate;
     private LocalDate eventEndDate;
 
-    // New: accept absolute instants (ISO-8601 with offset/Z) from frontend
-    // Example: "2026-01-15T10:00:00Z"
+    @NotNull(message = "Event start time is required")
     private Instant eventStartInstant;
     private Instant eventEndInstant;
     private Instant eventPublishInstant;
@@ -29,6 +39,7 @@ public class CreateEventRequest {
     // IANA timezone id supplied by client (e.g. "America/Los_Angeles"). Optional but recommended.
     private String eventTimeZone;
 
+    @NotNull(message = "Event owner is required")
     private Long eventOwnerId;
     private String status;
 }
