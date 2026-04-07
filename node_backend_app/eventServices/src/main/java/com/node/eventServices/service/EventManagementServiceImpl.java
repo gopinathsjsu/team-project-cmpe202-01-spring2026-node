@@ -1,6 +1,7 @@
 package com.node.eventServices.service;
 
 import com.node.eventServices.dto.EventInfoDto;
+import com.node.eventServices.exception.ResourceNotFoundException;
 import com.node.eventServices.model.User.User;
 import com.node.eventServices.model.events.EventStatus;
 import com.node.eventServices.model.tickets.Ticket;
@@ -12,6 +13,7 @@ import com.node.eventServices.utils.MapperUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -31,7 +33,9 @@ public class EventManagementServiceImpl implements EventManagementService {
     private MapperUtils mapper;
 
     @Override
+    @Transactional
     public EventInfoDto createEvent(Events event) {
+        log.info("Creating event '{}' for owner={}", event.getEventName(), event.getEventOwnerId());
         Events saved = eventRepository.save(event);
         log.info("Saved event is: {}", event);
         return convertToDto(saved);
@@ -52,36 +56,41 @@ public class EventManagementServiceImpl implements EventManagementService {
 
     @Override
     public List<EventInfoDto> getAllEvents() {
-
-        List<EventInfoDto> eventList = eventRepository.findAll().stream()
+        log.debug("Fetching all events");
+        List<EventInfoDto> events = eventRepository.findAll().stream()
                 .map(this::convertToDto)
                 .toList();
-        log.info("All Events retrieved: {}", eventList);
-        return eventList;
+        log.info("Retrieved {} events", events.size());
+        return events;
     }
 
     @Override
     public List<EventInfoDto> getAllActiveEvents() {
-        List<EventInfoDto> eventList = eventRepository.findActiveEvents().stream()
+        log.debug("Fetching all active (published) events");
+        List<EventInfoDto> events = eventRepository.findActiveEvents().stream()
                 .map(this::convertToDto)
                 .toList();
-        log.info("Active events retrieved: {}", eventList);
-        return eventList;
+        log.info("Retrieved {} active events", events.size());
+        return events;
     }
 
     @Override
     public List<EventInfoDto> getAllEventsWithDateAndStatus(String status, Instant date) {
-        // Use case-insensitive mapping to avoid failures on lowercase input like "submitted"
-        List<EventInfoDto> eventList = eventRepository.findEventsWithDateAndStatus(EventStatus.fromString(status), date).stream()
+        EventStatus eventStatus = EventStatus.fromString(status);
+        log.debug("Fetching events with status={} after date={}", eventStatus, date);
+        List<EventInfoDto> events = eventRepository.findEventsWithDateAndStatus(eventStatus, date).stream()
                 .map(this::convertToDto)
                 .toList();
-        log.info("Events retrieved for status {} and date {}: {}", status, date, eventList);
-        return eventList;
+        log.info("Retrieved {} events for status={}, date={}", events.size(), status, date);
+        return events;
     }
 
     @Override
+    @Transactional
     public EventInfoDto updateEvent(Long id, Events eventDetails) {
-        Events event = eventRepository.findById(id).orElseThrow(() -> new RuntimeException("Event not found"));
+        Events event = findEventOrThrow(id);
+        log.info("Updating event id={}, name='{}'", id, event.getEventName());
+
         event.setEventName(eventDetails.getEventName());
         event.setEventDescription(eventDetails.getEventDescription());
         event.setCategories(eventDetails.getCategories());
@@ -96,27 +105,35 @@ public class EventManagementServiceImpl implements EventManagementService {
         event.setApproverId(eventDetails.getApproverId());
         event.setStatus(eventDetails.getStatus());
         //event.setTicketType(eventDetails.getTicketType());
-        return convertToDto(eventRepository.save(event));
+        event.setEventTimeZone(eventDetails.getEventTimeZone());
+
+        Events saved = eventRepository.save(event);
+        log.info("Event id={} updated successfully", id);
+        return convertToDto(saved);
     }
 
     @Override
+    @Transactional
     public void deleteEvent(Long id) {
-        log.info("** ATTENTION:: Deleting event with ID {}", id);
+        findEventOrThrow(id);
+        log.warn("Deleting event id={}", id);
         eventRepository.deleteById(id);
-        log.info("Deleted event with ID {}", id);
+        log.info("Event id={} deleted", id);
     }
 
     @Override
+    @Transactional
     public void deleteAllEvent() {
-        log.info("** ATTENTION:: Deleting All events ");
+        log.warn("Deleting ALL events — this is a destructive operation");
         eventRepository.deleteAllEvents();
-        log.info("Deleted All event");
+        log.info("All events deleted");
     }
 
     @Override
     public List<EventInfoDto> getEventsByStatus(String status) {
-        List<EventInfoDto> eventList = eventRepository.findByStatus(status)
-                .stream()
+        EventStatus eventStatus = EventStatus.fromString(status);
+        log.debug("Fetching events by status={}", eventStatus);
+        List<EventInfoDto> eventList = eventRepository.findByStatus(eventStatus).stream()
                 .map(this::convertToDto)
                 .toList();
         log.info("Events retrieved with status {}: {}", status, eventList);
@@ -124,22 +141,34 @@ public class EventManagementServiceImpl implements EventManagementService {
     }
 
     @Override
+    @Transactional
     public EventInfoDto approveEvent(Long eventId, Long adminId) {
-        Events event = eventRepository.findById(eventId).orElseThrow(() -> new RuntimeException("Event not found"));
-        event.setStatus(EventStatus.fromString("APPROVED"));
+        Events event = findEventOrThrow(eventId);
+        EventStatus previousStatus = event.getStatus();
+
+        log.info("Admin id={} approving event id={} (current status={})", adminId, eventId, previousStatus);
+        event.transitionTo(EventStatus.APPROVED);
         event.setApproverId(adminId);
-        event.setEventPublishInstant(Instant.now());
-        log.info("Approving event ID {} by admin ID {}", eventId, adminId);
-        return convertToDto(eventRepository.save(event));
+
+        Events saved = eventRepository.save(event);
+        log.info("Event id={} approved: {} -> {}", eventId, previousStatus, saved.getStatus());
+        return convertToDto(saved);
     }
 
     @Override
+    @Transactional
     public EventInfoDto rejectEvent(Long eventId, Long adminId, String reason) {
-        Events event = eventRepository.findById(eventId).orElseThrow(() -> new RuntimeException("Event not found"));
-        event.setStatus(EventStatus.fromString("REJECTED"));
+        Events event = findEventOrThrow(eventId);
+        EventStatus previousStatus = event.getStatus();
+
+        log.info("Admin id={} rejecting event id={} (current status={}), reason='{}'",
+                adminId, eventId, previousStatus, reason);
+        event.transitionTo(EventStatus.REJECTED);
         event.setApproverId(adminId);
-        log.info("Rejecting event ID {} by admin ID {}. Reason: {}", eventId, adminId, reason);
-        return convertToDto(eventRepository.save(event));
+
+        Events saved = eventRepository.save(event);
+        log.info("Event id={} rejected: {} -> {}", eventId, previousStatus, saved.getStatus());
+        return convertToDto(saved);
     }
 
     @Override
@@ -150,22 +179,38 @@ public class EventManagementServiceImpl implements EventManagementService {
 
     @Override
     public List<EventInfoDto> searchEvents(String name) {
-        return eventRepository.findByEventNameContainingIgnoreCase(name)
-                .stream().map(this::convertToDto).toList();
+        log.debug("Searching events with keyword='{}'", name);
+        return eventRepository.searchPublishedEvents(name).stream()
+                .map(this::convertToDto)
+                .toList();
     }
 
     @Override
     public List<EventInfoDto> getEventsByOrganizerAndStatus(Long organizerId, String status) {
-        return eventRepository.findByEventOwnerIdAndStatus(organizerId, status)
-                .stream().map(this::convertToDto).toList();
+        EventStatus eventStatus = EventStatus.fromString(status);
+        log.debug("Fetching events for organizer id={}, status={}", organizerId, eventStatus);
+        return eventRepository.findByEventOwnerIdAndStatus(organizerId, eventStatus).stream()
+                .map(this::convertToDto)
+                .toList();
     }
 
     @Override
+    @Transactional
     public EventInfoDto updateEventStatus(Long id, String status) {
-        Events event = eventRepository.findById(id).orElseThrow(() -> new RuntimeException("Event not found"));
-        event.setStatus(EventStatus.fromString(status));
-        log.info("Updating event ID {} status to {}", id, status);
-        return convertToDto(eventRepository.save(event));
+        Events event = findEventOrThrow(id);
+        EventStatus newStatus = EventStatus.fromString(status);
+        EventStatus previousStatus = event.getStatus();
+
+        log.info("Transitioning event id={} from {} to {}", id, previousStatus, newStatus);
+        event.transitionTo(newStatus);
+
+        if (newStatus == EventStatus.PUBLISHED) {
+            event.setEventPublishInstant(Instant.now());
+        }
+
+        Events saved = eventRepository.save(event);
+        log.info("Event id={} status updated: {} -> {}", id, previousStatus, saved);
+        return convertToDto(saved);
     }
 
     private String findOrganizerNameById(Long eventOwnerId) {
@@ -174,18 +219,24 @@ public class EventManagementServiceImpl implements EventManagementService {
                 .orElse("Unknown Organizer");
     }
 
+        public Events findEventOrThrow(Long id) {
+        return eventRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Event", id));
+    }
+
+
     private Long findTicketsSoldForEvent(Long eventId) {
-        return (Long) (long) ticketRepository.findByEvent_EventIdAndStatus(eventId, "BOOKED")
-                .stream().mapToInt(Ticket::getQuantity).sum();
+        return (long) ticketRepository.findByEvent_EventIdAndStatus(eventId, "BOOKED")
+                .stream()
+                .mapToInt(Ticket::getQuantity)
+                .sum();
     }
 
     private EventInfoDto convertToDto(Events event) {
-        //log.info("Converting event ID {} to DTO. Event details: {}", event.getEventId(), event);
         String ownerName = userRepository.findById(event.getEventOwnerId())
                 .map(User::getUsername)
                 .orElse("Unknown");
         Long ticketsSold = findTicketsSoldForEvent(event.getEventId());
-        log.info("Service:: Converting event {} to DTO. Owner: {}, Tickets Sold: {}", event.getEventId(), ownerName, ticketsSold);
         return mapper.convertEventToDto(event, ownerName, ticketsSold);
     }
 }
