@@ -77,3 +77,15 @@ export interface EventFormData {
   image: string;
   tags: string[];
 }
+
+export interface TicketTypes {
+  id?: string;
+  name: string;
+  description: string;
+  ticketType: string;
+  price: number | '0.00';
+  quantity: number;
+  waitlistCapacity: number | 0;
+  serviceFee: number;
+  total: number;
+}

@@ -61,7 +61,7 @@ export function EventDetail() {
     const maxCapacity = event.maxCapacity ?? event.capacity ?? 0;
     const availableTickets = Math.max(0, maxCapacity - ticketsSold);
     const percentageSold = maxCapacity > 0 ? (ticketsSold / maxCapacity) * 100 : 0;
-    const isBookable = event.status === 'published' || event.status === 'APPROVED';
+    const isBookable = event.status === 'PUBLISHED' || event.status === 'APPROVED';
 
     const isAlreadyBooked = bookings.some(b => (String(b.eventId) === String(event.eventId || id) && String(b.userId) === String(currentUser?.id) && b.status === 'confirmed'));
     const handleShare = () => {

@@ -2,7 +2,9 @@
 import axios from 'axios';
 import type { Event, Booking, User, EventCategory } from './types';
 
-const API_BASE_URL = 'http://localhost:8080/api/v1';
+// Use same-origin `/api/v1` in dev so Vite can proxy to event (8080) vs booking (8082).
+// Override with VITE_API_BASE_URL when serving the SPA behind a gateway.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
 // Add interceptor to include token
 axios.interceptors.request.use((config) => {
@@ -153,7 +155,7 @@ export function runAPI() {
       }));
     },
     addBooking: async (booking: Booking): Promise<Booking> => {
-      const response = await axios.post(`${API_BASE_URL}/bookings/book`, {
+      const response = await axios.post(`${API_BASE_URL}/bookings`, {
         eventId: Number(booking.eventId),
         userId: Number(booking.userId),
         quantity: booking.ticketQuantity,
