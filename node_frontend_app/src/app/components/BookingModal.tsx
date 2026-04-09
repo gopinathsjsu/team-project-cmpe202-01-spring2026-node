@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { CalendarPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { runAPI } from '../api';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 interface BookingModalProps {
     event: Event;
@@ -29,38 +30,55 @@ export function BookingModal({ event, open, onClose }: BookingModalProps) {
     const [email, setEmail] = useState(currentUser?.email);
     const [name, setName] = useState(currentUser?.name);
     const [bookingConfirmed, setBookingConfirmed] = useState(false);
+    const [ticketType, setTicketType] = useState('general');
 
     const api = runAPI();
 
-    const availableTickets = event.maxCapacity - event.ticketsSold || 0;
-    const totalAmount = event.ticketPrice * quantity || 0;
+    const ticketsSold = typeof event.ticketsSold === 'number' ? event.ticketsSold : 0;
+    const maxCap = typeof event.maxCapacity === 'number' ? event.maxCapacity : 0;
+    const availableTickets = Math.max(0, maxCap - ticketsSold);
+    const totalAmount = (typeof event.ticketPrice === 'number' ? event.ticketPrice : 0) * quantity;
 
-    const handleBooking = () => {
+    const handleBooking = async () => {
+        if (!currentUser?.id) {
+            toast.error('Please log in to book tickets');
+            return;
+        }
         if (quantity > availableTickets) {
             toast.error('Not enough tickets available');
             return;
         }
-
         if (quantity < 1) {
             toast.error('Please select at least 1 ticket');
             return;
         }
 
+        const eventId = event.eventId ?? (event as any).id ?? '';
+        if (!eventId) {
+            toast.error('Invalid event');
+            return;
+        }
+
         const booking = {
-            id: `booking-${Date.now()}`,
-            eventId: event.eventId || (event as any).id || '',
-            userId: currentUser?.id || '',
-            userName: name || '',
-            userEmail: email || '',
+            id: '',
+            eventId: String(eventId),
+            userId: String(currentUser.id),
+            userName: name || currentUser.name || '',
+            userEmail: email || currentUser.email || '',
             ticketQuantity: quantity,
             totalAmount,
             bookingDate: new Date().toISOString(),
             status: 'confirmed' as const,
         };
 
-        api.addBooking(booking);
-        setBookingConfirmed(true);
-        toast.success(`Successfully booked ${quantity} ticket(s)!`);
+        try {
+            await api.addBooking(booking);
+            setBookingConfirmed(true);
+            toast.success(`Successfully booked ${quantity} ticket(s)!`);
+        } catch (err: any) {
+            const msg = err.response?.data?.message ?? err.message ?? 'Booking failed';
+            toast.error(msg);
+        }
     };
 
     const handleClose = () => {
@@ -81,23 +99,23 @@ export function BookingModal({ event, open, onClose }: BookingModalProps) {
                     </DialogHeader>
 
                     <div className="py-6 space-y-4">
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                            <p className="text-green-800 font-medium mb-2">
+                        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4 text-center">
+                            <p className="text-emerald-600 dark:text-emerald-400 font-medium mb-2">
                                 {quantity} {quantity === 1 ? 'Ticket' : 'Tickets'} Confirmed
                             </p>
-                            <p className="text-sm text-green-700">
+                            <p className="text-sm text-emerald-600/80 dark:text-emerald-400/80">
                                 A confirmation email has been sent to {email}
                             </p>
                         </div>
 
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
                             <div className="flex items-start gap-3">
-                                <CalendarPlus className="h-5 w-5 text-blue-600 mt-0.5" />
+                                <CalendarPlus className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
                                 <div className="flex-1">
-                                    <p className="font-medium text-blue-900 mb-1">
+                                    <p className="font-medium text-blue-700 dark:text-blue-300 mb-1">
                                         Don't forget to add this to your calendar!
                                     </p>
-                                    <p className="text-sm text-blue-700 mb-3">
+                                    <p className="text-sm text-blue-600/80 dark:text-blue-400/80 mb-3">
                                         Get reminders before the event starts
                                     </p>
                                     <AddToCalendar event={event} size="sm" />
@@ -147,6 +165,23 @@ export function BookingModal({ event, open, onClose }: BookingModalProps) {
                     </div>
 
                     <div className="space-y-2">
+                        <Label htmlFor="ticketType">Ticket Type</Label>
+                        {/* TODO: Add ticket type selection */}
+                        <Select
+                            value={ticketType}
+                            onValueChange={(value) => setTicketType(value)}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select ticket type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="general">General</SelectItem>
+                                <SelectItem value="vip">VIP</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* <div className="space-y-2">
                         <Label htmlFor="quantity">Number of Tickets</Label>
                         <Input
                             id="quantity"
@@ -156,10 +191,10 @@ export function BookingModal({ event, open, onClose }: BookingModalProps) {
                             value={quantity}
                             onChange={(e) => setQuantity(Number(e.target.value))}
                         />
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-muted-foreground">
                             {availableTickets} tickets available
                         </p>
-                    </div>
+                    </div> */}
 
                     <div className="border-t pt-4">
                         <div className="flex justify-between mb-2">
