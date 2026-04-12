@@ -2,6 +2,8 @@ package com.node.eventServices.controller;
 
 import com.node.eventServices.dto.CreateEventRequest;
 import com.node.eventServices.dto.EventInfoDto;
+import com.node.eventServices.dto.TicketTypeItemRequest;
+import com.node.eventServices.dto.TicketTypeResponse;
 import com.node.eventServices.model.events.Events;
 import com.node.eventServices.service.EventManagementService;
 import com.node.eventServices.utils.MapperUtils;
@@ -37,7 +39,7 @@ public class EventServicesController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<EventInfoDto> getEventById(@PathVariable Long id) {
+    public ResponseEntity<EventInfoDto> getEventById(@PathVariable String id) {
         log.debug("GET /api/v1/events/{}", id);
         Optional<EventInfoDto> event = eventManagementService.getEventById(id);
         return event.map(ResponseEntity::ok)
@@ -66,7 +68,7 @@ public class EventServicesController {
 
     @PutMapping("/{id}")
     public ResponseEntity<EventInfoDto> updateEvent(
-            @PathVariable Long id,
+            @PathVariable String id,
             @Valid @RequestBody CreateEventRequest request) {
         log.info("PUT /api/v1/events/{}", id);
         Events eventDetails = mapper.convertCreateEventDtoToEvent(request);
@@ -75,7 +77,7 @@ public class EventServicesController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteEvent(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteEvent(@PathVariable String id) {
         log.info("DELETE /api/v1/events/{}", id);
         eventManagementService.deleteEvent(id);
         return ResponseEntity.noContent().build();
@@ -103,16 +105,16 @@ public class EventServicesController {
 
     @PutMapping("/{id}/approve")
     public ResponseEntity<EventInfoDto> approveEvent(
-            @PathVariable Long id,
-            @RequestParam Long approverId) {
+            @PathVariable String id,
+            @RequestParam String approverId) {
         log.info("PUT /api/v1/events/{}/approve by approverId={}", id, approverId);
         return ResponseEntity.ok(eventManagementService.approveEvent(id, approverId));
     }
 
     @PutMapping("/{id}/reject")
     public ResponseEntity<EventInfoDto> rejectEvent(
-            @PathVariable Long id,
-            @RequestParam Long adminId,
+            @PathVariable String id,
+            @RequestParam String adminId,
             @RequestParam(required = false) String reason) {
         log.info("PUT /api/v1/events/{}/reject by adminId={}, reason='{}'", id, adminId, reason);
         return ResponseEntity.ok(eventManagementService.rejectEvent(id, adminId, reason));
@@ -120,14 +122,14 @@ public class EventServicesController {
 
     @PatchMapping("/{id}/status")
     public ResponseEntity<EventInfoDto> updateEventStatus(
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestParam String status) {
         log.info("PATCH /api/v1/events/{}/status — newStatus={}", id, status);
         return ResponseEntity.ok(eventManagementService.updateEventStatus(id, status));
     }
 
     @GetMapping("/organizer/{organizerId}")
-    public ResponseEntity<List<EventInfoDto>> getEventsByOrganizer(@PathVariable Long organizerId) {
+    public ResponseEntity<List<EventInfoDto>> getEventsByOrganizer(@PathVariable String organizerId) {
         log.debug("GET /api/v1/events/organizer/{}", organizerId);
         return ResponseEntity.ok(eventManagementService.getEventsByOrganizer(organizerId));
     }
@@ -140,9 +142,24 @@ public class EventServicesController {
 
     @GetMapping("/organizer/{organizerId}/status/{status}")
     public ResponseEntity<List<EventInfoDto>> getEventsByOrganizerAndStatus(
-            @PathVariable Long organizerId,
+            @PathVariable String organizerId,
             @PathVariable String status) {
         log.debug("GET /api/v1/events/organizer/{}/status/{}", organizerId, status);
         return ResponseEntity.ok(eventManagementService.getEventsByOrganizerAndStatus(organizerId, status));
+    }
+
+    @PostMapping("/ticketType/{eventId}")
+    public ResponseEntity<List<TicketTypeResponse>> assignTicketTypesToEvent(
+            @PathVariable String eventId,
+            @Valid @RequestBody List<TicketTypeItemRequest> items) {
+        log.info("POST /api/v1/ticket-types/event/{} — assigning {} ticket types", eventId, items.size());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(eventManagementService.assignTicketTypesToEvent(eventId, items));
+    }
+
+    @GetMapping("/ticketType/{eventId}")
+    public ResponseEntity<List<TicketTypeResponse>> getTicketTypesByEvent(@PathVariable String eventId) {
+        log.debug("GET /api/v1/ticket-types/event/{}", eventId);
+        return ResponseEntity.ok(eventManagementService.getTicketTypesByEvent(eventId));
     }
 }
