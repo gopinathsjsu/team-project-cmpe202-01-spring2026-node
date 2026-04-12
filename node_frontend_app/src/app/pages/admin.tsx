@@ -21,6 +21,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 import { runAPI } from '../api';
+import { resolveEventImageUrl } from '@/lib/eventImageStorage';
 
 export function AdminPanel() {
     const navigate = useNavigate();
@@ -57,42 +58,58 @@ export function AdminPanel() {
     }
 
     const totalEvents = events.length;
-    const publishedEvents = events.filter(e => e.status === 'published').length;
-    const totalRevenue = events.reduce((sum, e) => sum + (e.ticketsSold * e.ticketPrice), 0) || 0;
-    const totalTicketsSold = events.reduce((sum, e) => sum + e.ticketsSold, 0) || 0;
+    const publishedEvents = events.filter(e => e.status?.toUpperCase() === 'PUBLISHED').length;
+    const totalRevenue = events.reduce((sum, e) => sum + ((e.ticketsSold || 0) * (e.ticketPrice || 0)), 0);
+    const totalTicketsSold = events.reduce((sum, e) => sum + (e.ticketsSold || 0), 0);
     const totalBookings = bookings.length;
     const confirmedBookings = bookings.filter(b => b.status === 'confirmed').length;
 
+    const refreshEvents = () => {
+        api.getEvents().then((data) => {
+            setEvents(Array.isArray(data) ? data : []);
+        }).catch(console.error);
+    };
+
     const handleApproveEvent = (eventId: string) => {
-        api.approveEvent(eventId, currentUser?.id);
-        toast.success('Event approved and published');
+        api.approveEvent(eventId, currentUser?.id).then(() => {
+            toast.success('Event approved');
+            refreshEvents();
+        }).catch(() => toast.error('Failed to approve event'));
     };
 
     const handleRejectEvent = (eventId: string) => {
         if (confirm('Are you sure you want to reject this event?')) {
-            api.rejectEvent(eventId, currentUser?.id, "Rejected by admin");
-            toast.success('Event rejected and removed');
+            api.rejectEvent(eventId, currentUser?.id, "Rejected by admin").then(() => {
+                toast.success('Event rejected');
+                refreshEvents();
+            }).catch(() => toast.error('Failed to reject event'));
         }
     };
 
     const handleSuspendEvent = (eventId: string) => {
-        api.updateEvent(eventId, { status: 'SUSPENDED' });
-        toast.success('Event suspended');
+        api.updateEventStatus(eventId, 'SUSPENDED').then(() => {
+            toast.success('Event suspended');
+            refreshEvents();
+        }).catch(() => toast.error('Failed to suspend event'));
     };
 
     const handleCancelEvent = (eventId: string) => {
-        api.updateEventStatus(eventId, 'CANCELLED');
-        toast.success('Event cancelled');
+        api.updateEventStatus(eventId, 'CANCELLED').then(() => {
+            toast.success('Event cancelled');
+            refreshEvents();
+        }).catch(() => toast.error('Failed to cancel event'));
     };
 
     const handleToSubmitEvent = (eventId: string) => {
-        api.updateEventStatus(eventId, 'SUBMITTED');
-        toast.success('Event submitted');
+        api.updateEventStatus(eventId, 'SUBMITTED').then(() => {
+            toast.success('Event moved to submitted');
+            refreshEvents();
+        }).catch(() => toast.error('Failed to update event'));
     };
 
     const filteredEvents = events.filter(event =>
-        event?.eventName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        event?.organizerName.toLowerCase().includes(searchQuery.toLowerCase())
+        event?.eventName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        event?.eventOwnerName?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     return (
@@ -210,7 +227,7 @@ export function AdminPanel() {
 
                             <TabsContent value="published">
                                 <EventManagementList
-                                    events={filteredEvents.filter(e => e.status === 'published')}
+                                    events={filteredEvents.filter(e => e.status?.toUpperCase() === 'PUBLISHED')}
                                     onApprove={handleApproveEvent}
                                     onReject={handleRejectEvent}
                                     onSuspend={handleSuspendEvent}
@@ -324,7 +341,7 @@ function EventManagementList({ events, onApprove, onReject, onSuspend, onCancel,
             {events.map((event: any, index: number) => (
                 <div key={event.eventId || event.id || index} className="flex items-start gap-4 p-4 border rounded-lg">
                     <img
-                        src={event.imageUrl}
+                        src={resolveEventImageUrl(event.imageUrl)}
                         alt={event.eventName}
                         className="w-24 h-24 object-cover rounded"
                     />

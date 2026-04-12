@@ -13,14 +13,16 @@ import {
     Edit,
     Trash2,
     Plus,
-    Eye
+    Eye,
+    Users,
 } from 'lucide-react';
 
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { runAPI } from '../api';
 import { useAuth } from '../context/AuthContext';
-import type { Booking } from '../types';
+import type { UserBooking } from '../types';
+import { resolveEventImageUrl } from '@/lib/eventImageStorage';
 
 const createGoogleCalendarLink = (event: any) => {
     const title = encodeURIComponent(event.eventName || event.title || 'Event');
@@ -67,31 +69,46 @@ export function Dashboard() {
     const authContext = useAuth();
     const currentUser = authContext.currentUser;
 
-    if (currentUser?.id == null) {
-        navigate("/login");
-    }
+    useEffect(() => {
+        if (!currentUser?.id) {
+            navigate("/login");
+            return;
+        }
+        if (currentUser.role === 'ADMIN') {
+            navigate('/admin');
+            return;
+        }
+    }, [currentUser, navigate]);
 
     useEffect(() => {
-        if (currentUser?.id) {
+        if (currentUser?.id && (currentUser.role === 'ORGANIZER' || currentUser.role === 'ADMIN')) {
             api.getEventsByOwnerId(currentUser.id).then((data) => {
                 setEvents(Array.isArray(data) ? data : []);
             }).catch(console.error);
         }
     }, [currentUser?.id]);
 
-
-
     useEffect(() => {
-        if (currentUser?.role === 'USER') {
+        if (currentUser?.role === 'USER' && currentUser?.id) {
             api.getUserBookings(currentUser.id)
-                .then(bookings => setMyBookings(bookings.filter((b: any) => b.status === 'confirmed')))
+                .then(bookings => setMyBookings(bookings.filter((b: any) => b.status === 'CONFIRMED' || b.status === 'confirmed')))
                 .catch(console.error);
+            console.log("Current User ID:", currentUser.id);
+            console.log("My Bookings from api:", myBookings);
         }
     }, [currentUser?.id, currentUser?.role]);
 
     // Attendee Dashboard
     if (currentUser?.role === 'USER') {
         const totalSpent = myBookings.reduce((sum: number, b: any) => sum + b.totalAmount, 0);
+        console.log("My Bookings:", myBookings);
+        /* useEffect(() => {
+        if (currentUser?.id) {
+            api.getEventsBookedByUserId(currentUser.id).then((data) => {
+                setEvents(Array.isArray(data) ? data : []);
+            }).catch(console.error);
+        }
+    }, [currentUser?.id]); */
 
         return (
             <div className="min-h-screen bg-gray-50">
@@ -105,27 +122,27 @@ export function Dashboard() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
+                                <CardTitle className="text-sm font-medium">Upcoming Events</CardTitle>
                                 <Ticket className="h-4 w-4 text-gray-500" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">{myBookings.length}</div>
+                                <div className="text-2xl font-bold">{myBookings.map((b) => b.eventStartInstant>= new Date().toISOString() ? 1 : 0).reduce((sum: number, count) => sum + count, 0)}</div>{/*booking whose date is in future*/}
                             </CardContent>
                         </Card>
 
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-sm font-medium">Tickets Purchased</CardTitle>
+                                <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
                                 <Calendar className="h-4 w-4 text-gray-500" />
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold">
-                                    {myBookings.reduce((sum, b) => sum + b.ticketQuantity, 0)}
+                                    {myBookings.length}
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <Card>
+                        {/* <Card>
                             <CardHeader className="flex flex-row items-center justify-between pb-2">
                                 <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
                                 <DollarSign className="h-4 w-4 text-gray-500" />
@@ -133,7 +150,7 @@ export function Dashboard() {
                             <CardContent>
                                 <div className="text-2xl font-bold">${totalSpent.toFixed(2)}</div>
                             </CardContent>
-                        </Card>
+                        </Card> */}
                     </div>
 
                     {/* Bookings List */}
@@ -151,28 +168,28 @@ export function Dashboard() {
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    {myBookings.map((booking: Booking) => {
-                                        const event = events.find(e => e.eventId === booking.eventId);
-                                        if (!event) return null;
-
+                                    {myBookings.map((booking: UserBooking) => {
+                                        // const event = events.find(e => e.eventId === booking.eventId);
+                                        // if (!event) return null;
+                                        console.log("Booking:", booking);
                                         return (
                                             <div key={booking.id} className="flex items-start gap-4 p-4 border rounded-lg">
                                                 <img
-                                                    src={event.imageUrl || ''}
-                                                    alt={event.eventDescription}
+                                                    src={resolveEventImageUrl(booking.imageUrl)}
+                                                    alt={booking.eventDescription}
                                                     className="w-24 h-24 object-cover rounded"
                                                     onError={(e) => {
                                                         (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1540317580384-e5d43867caa6?auto=format&fit=crop&w=800&q=80';
                                                     }}
                                                 />
                                                 <div className="flex-1">
-                                                    <h3 className="font-semibold mb-1">{event.eventDescription}</h3>
+                                                    <h3 className="font-semibold mb-1">{booking.eventName}</h3>
                                                     <p className="text-sm text-gray-600 mb-2">
-                                                        {format(new Date(String(event.eventStartInstant || event.eventStartDate || event.startDate || '').replace('Z', '')), 'MMM dd, yyyy')} at {event.eventStartInstant ? format(new Date(String(event.eventStartInstant).replace('Z', '')), 'h:mm a') : ''}
+                                                        {format(new Date(String(booking.eventStartInstant || '').replace('Z', '')), 'MMM dd, yyyy')} at {booking.eventStartInstant ? format(new Date(String(booking.eventStartInstant).replace('Z', '')), 'h:mm a') : ''}
                                                     </p>
                                                     <div className="flex items-center gap-4 text-sm">
                                                         <span className="text-gray-600">
-                                                            {booking.ticketQuantity} {booking.ticketQuantity === 1 ? 'ticket' : 'tickets'}
+                                                            {booking.quantity} {booking.quantity === 1 ? 'ticket' : 'tickets'}
                                                         </span>
                                                         <span className="font-medium">${booking.totalAmount.toFixed(2)}</span>
                                                         <Badge variant="secondary">{booking.status}</Badge>
@@ -181,14 +198,27 @@ export function Dashboard() {
                                                 <div className="flex flex-col gap-2">
                                                     <Button
                                                         variant="outline"
-                                                        onClick={() => navigate(`/events/${event.eventId}`)}
+                                                        onClick={() => navigate(`/events/${booking.eventId}`)}
                                                     >
                                                         View Event
                                                     </Button>
                                                     <Button
                                                         variant="secondary"
                                                         className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200"
-                                                        onClick={() => window.open(createGoogleCalendarLink(event), '_blank')}
+                                                        onClick={() => window.open(createGoogleCalendarLink({
+                                                            eventName: booking.eventDescription,
+                                                            eventStartInstant: booking.eventStartInstant,
+                                                            eventEndInstant: booking.eventEndInstant,
+                                                            eventDescription: `Booking for ${booking.eventDescription}`,
+                                                            eventLocation: {
+                                                                locationAddress: booking.eventLocation?.locationAddress || '',
+                                                                locationName: booking.eventLocation?.locationName || '',
+                                                                latitude: booking.eventLocation?.latitude || null,
+                                                                longitude: booking.eventLocation?.longitude || null, 
+                                                            },
+                                                            timezone: 'America/Los_Angeles',
+                                                            
+                                                            }), '_blank')}
                                                     >
                                                         <Calendar className="h-4 w-4 mr-2" />
                                                         Add to Google Calendar
@@ -402,14 +432,7 @@ export function Dashboard() {
         );
     }
 
-    else if (currentUser?.role === 'ADMIN') {
-        navigate('/admin');
-    }
-
-    else {
-        navigate("/login");
-    }
-
+    return null;
 }
 
 
@@ -440,7 +463,7 @@ function EventsList({
                 return (
                     <div key={event.eventId} className="flex items-start gap-4 p-4 border rounded-lg">
                         <img
-                            src={event.imageUrl}
+                            src={resolveEventImageUrl(event.imageUrl)}
                             alt={event.eventName}
                             className="w-32 h-32 object-cover rounded"
                             onError={(e) => {
@@ -508,6 +531,14 @@ function EventsList({
                                     >
                                         Unpublish
                                     </Button>}
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => navigate(`/events/${event.eventId}/attendees`)}
+                                >
+                                    <Users className="h-4 w-4 mr-1" />
+                                    Attendees
+                                </Button>
                                 <Button
                                     size="sm"
                                     variant="outline"
