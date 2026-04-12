@@ -10,6 +10,7 @@ import { runAPI } from '../api';
 import { EventMap } from '../components/EventMap';
 import { AddToCalendar } from '../components/AddToCalender';
 import { BookingModal } from '../components/BookingModal';
+import { resolveEventImageUrl } from '@/lib/eventImageStorage';
 
 export function EventDetail() {
     const { id } = useParams();
@@ -63,7 +64,8 @@ export function EventDetail() {
     const percentageSold = maxCapacity > 0 ? (ticketsSold / maxCapacity) * 100 : 0;
     const isBookable = event.status === 'PUBLISHED' || event.status === 'APPROVED';
 
-    const isAlreadyBooked = bookings.some(b => (String(b.eventId) === String(event.eventId || id) && String(b.userId) === String(currentUser?.id) && b.status === 'confirmed'));
+    const isAlreadyBookedByUser = bookings.some(b => String(b.userId) === String(currentUser?.id) && b.status === 'CONFIRMED');
+    console.log('isAlreadyBookedByUser:', isAlreadyBookedByUser, 'bookings:', bookings, 'currentUser:', currentUser);
     const handleShare = () => {
         navigator.clipboard.writeText(window.location.href);
         toast.success('Link copied to clipboard!');
@@ -98,7 +100,7 @@ export function EventDetail() {
                         <div className="bg-card text-card-foreground border rounded-lg overflow-hidden shadow-sm">
                             <div className="aspect-video overflow-hidden bg-muted">
                                 <img
-                                    src={event.imageUrl}
+                                    src={resolveEventImageUrl(event.imageUrl)}
                                     alt={event.eventName}
                                     className="w-full h-full object-cover"
                                 />
@@ -230,7 +232,7 @@ export function EventDetail() {
 
                             {isBookable && currentUser?.role === 'USER' && availableTickets > 0 ? (
                                 <>
-                                    {isAlreadyBooked ? (<Button className="w-full" size="lg" onClick={() => cancelBookingByUserIdAndEventId(currentUser.id, event.eventId)}>
+                                    {isAlreadyBookedByUser ? (<Button className="w-full" size="lg" onClick={() => cancelBookingByUserIdAndEventId(currentUser.id, event.eventId)}>
                                         Cancel Booking</Button>)
                                         : <Button className="w-full" size="lg" onClick={() => setBookingModalOpen(true)}>
                                             Get Tickets</Button>
