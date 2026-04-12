@@ -1,31 +1,48 @@
 package com.node.eventServices.model.events;
 
-import java.time.LocalDate;
-
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.Instant;
 
 @Entity
+@Table(name = "event_updates")
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class EventUpdates {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long updateId;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String updateId;
 
+    @Column(nullable = false)
     private String eventId;
 
+    @Column(nullable = false)
     private String adminId;
 
-    private String status;
+    @Enumerated(EnumType.STRING)
+    private EventStatus previousStatus;
+
+    @Enumerated(EnumType.STRING)
+    private EventStatus newStatus;
 
     private String comments;
 
-    private LocalDate reviewDate;
+    private Instant reviewDate;
 
-    private LocalDate createdAt;
+    private Instant createdAt;
 
+    @PrePersist
+    protected void onCreate() {
+        createdAt = Instant.now();
+        if (reviewDate == null) {
+            reviewDate = Instant.now();
+        }
+    }
 }

@@ -65,6 +65,7 @@ public class MapperUtils {
                 .eventOwnerId(event.getEventOwnerId())
                 .eventOwnerName(organiserName)
                 .ticketsSold(ticketsSold)
+
                 .build();
         log.info("Mapped event {} to DTO: {}", event.getEventId(), dto);
         log.info("Saved event is: {}", event);

@@ -17,7 +17,7 @@ public class CreateEventRequest {
     private String eventName;
     private String eventDescription;
 
-    private List<Long> categories;
+    private List<String> categories;
 
     @Positive(message = "Max capacity must be positive")
     private Long maxCapacity;
@@ -40,6 +40,6 @@ public class CreateEventRequest {
     private String eventTimeZone;
 
     @NotNull(message = "Event owner is required")
-    private Long eventOwnerId;
+    private String eventOwnerId;
     private String status;
 }
