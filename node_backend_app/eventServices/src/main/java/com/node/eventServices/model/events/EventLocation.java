@@ -11,8 +11,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class EventLocation {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long locationId;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String locationId;
 
     private String locationName;
 

@@ -5,22 +5,22 @@ import com.node.eventServices.model.events.EventStatus;
 import lombok.Builder;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.List;
 
 @Data
 @Builder
 public class EventInfoDto {
 
-    private Long eventId; // UUID as String
+    private String eventId;
     private String eventName;
     private String eventDescription;
-    private List<String> categories; // category IDs
+    private List<String> categories;
     private Long maxCapacity;
     private Long waitlistCapacity;
     private EventLocationDto eventLocation;
-    private String ticketPrice;
+    private BigDecimal ticketPrice;
     private String imageUrl;
     // legacy date-only fields (optional)
     //private LocalDate eventStartDate;
@@ -35,8 +35,9 @@ public class EventInfoDto {
     // IANA timezone id supplied by client (e.g. "America/Los_Angeles"). Optional but recommended.
     private String eventTimeZone;
 
-    private Long eventOwnerId;
+    private String eventOwnerId;
     private String eventOwnerName;
     private EventStatus status;
+    private List<String> allowedTransitions;
     private Long ticketsSold;
 }
