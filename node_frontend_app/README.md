@@ -71,3 +71,13 @@ export default defineConfig([
   },
 ])
 ```
+
+## Google Calendar Sync
+
+To add an event to Google Calendar, use the following link:
+
+```
+https://calendar.google.com/calendar/render?action=TEMPLATE&text=MyAssignemnt&dates=20260115T100000/20260115T100000&details=CompleteML&location=Event%20Location
+```
+
+

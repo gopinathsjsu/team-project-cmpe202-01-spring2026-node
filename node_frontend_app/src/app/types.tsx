@@ -77,3 +77,67 @@ export interface EventFormData {
   image: string;
   tags: string[];
 }
+
+export interface TicketTypes {
+  id?: string;
+  name: string;
+  description: string;
+  ticketType: string;
+  price: number | '0.00';
+  quantity: number;
+  waitlistCapacity: number | 0;
+  serviceFee: number;
+  total: number;
+}
+
+/** Draft row for create/edit event forms (booking service) */
+export interface TicketTypeDraft {
+  localKey: string;
+  /** Booking service uses string UUID primary keys */
+  backendId?: string;
+  ticketType: string;
+  description: string;
+  price: number;
+  totalQuantity: number;
+  waitlistCapacity: number;
+  soldQuantity?: number;
+}
+
+/** Response from GET /api/v1/ticket-types/event/{eventId} */
+export interface TicketTypeApi {
+  id: string;
+  eventId: string;
+  ticketType: string;
+  description?: string | null;
+  price: number;
+  totalQuantity: number;
+  waitlistCapacity?: number | null;
+  soldQuantity?: number | null;
+  availableQuantity?: number | null;
+}
+
+export interface UserBooking {
+  id: string;
+  eventId: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  quantity: number;
+  totalAmount: number;
+  createdAt: string;
+  eventName: string;
+  eventDescription: string;
+  eventStartInstant: string;
+  eventEndInstant: string;
+  imageUrl: string;
+  status: String;
+  eventOwnerId: string;
+  eventOwnerName: string;
+  eventLocation: {
+    locationName: string;
+    locationAddress: string;
+    latitude: number | null;
+    longitude: number | null;
+  };
+  eventTimeZone: string;
+}
