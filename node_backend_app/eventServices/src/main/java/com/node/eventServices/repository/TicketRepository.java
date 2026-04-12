@@ -7,9 +7,9 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface TicketRepository extends JpaRepository<Ticket, Long> {
+public interface TicketRepository extends JpaRepository<Ticket, String> {
 
-    List<Ticket> findByEvent_EventIdAndStatus(Long eventId, String status);
+    List<Ticket> findByEvent_EventIdAndStatus(String eventId, String status);
 
-    List<Ticket> findByEvent_EventId(Long eventId);
+    List<Ticket> findByEvent_EventId(String eventId);
 }

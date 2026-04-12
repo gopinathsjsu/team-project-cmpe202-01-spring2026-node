@@ -1,13 +1,17 @@
 package com.node.eventServices.service;
 
 import com.node.eventServices.dto.EventInfoDto;
+import com.node.eventServices.dto.TicketTypeItemRequest;
+import com.node.eventServices.dto.TicketTypeResponse;
 import com.node.eventServices.exception.ResourceNotFoundException;
 import com.node.eventServices.model.User.User;
 import com.node.eventServices.model.events.EventStatus;
+import com.node.eventServices.model.events.TicketType;
 import com.node.eventServices.model.tickets.Ticket;
 import com.node.eventServices.model.events.Events;
 import com.node.eventServices.repository.EventRepository;
 import com.node.eventServices.repository.TicketRepository;
+import com.node.eventServices.repository.TicketTypeRepository;
 import com.node.eventServices.repository.UserRepository;
 import com.node.eventServices.utils.MapperUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +34,8 @@ public class EventManagementServiceImpl implements EventManagementService {
     @Autowired
     private TicketRepository ticketRepository;
     @Autowired
+    private TicketTypeRepository ticketTypeRepository;
+    @Autowired
     private MapperUtils mapper;
 
     @Override
@@ -42,7 +48,7 @@ public class EventManagementServiceImpl implements EventManagementService {
     }
 
     @Override
-    public Optional<EventInfoDto> getEventById(Long id) {
+    public Optional<EventInfoDto> getEventById(String id) {
         Optional<EventInfoDto> eventOpt =  eventRepository.findById(id)
                 .map(this::convertToDto);
         if(eventOpt.isPresent()) {
@@ -87,7 +93,7 @@ public class EventManagementServiceImpl implements EventManagementService {
 
     @Override
     @Transactional
-    public EventInfoDto updateEvent(Long id, Events eventDetails) {
+    public EventInfoDto updateEvent(String id, Events eventDetails) {
         Events event = findEventOrThrow(id);
         log.info("Updating event id={}, name='{}'", id, event.getEventName());
 
@@ -114,7 +120,7 @@ public class EventManagementServiceImpl implements EventManagementService {
 
     @Override
     @Transactional
-    public void deleteEvent(Long id) {
+    public void deleteEvent(String id) {
         findEventOrThrow(id);
         log.warn("Deleting event id={}", id);
         eventRepository.deleteById(id);
@@ -142,7 +148,7 @@ public class EventManagementServiceImpl implements EventManagementService {
 
     @Override
     @Transactional
-    public EventInfoDto approveEvent(Long eventId, Long adminId) {
+    public EventInfoDto approveEvent(String eventId, String adminId) {
         Events event = findEventOrThrow(eventId);
         EventStatus previousStatus = event.getStatus();
 
@@ -150,14 +156,17 @@ public class EventManagementServiceImpl implements EventManagementService {
         event.transitionTo(EventStatus.APPROVED);
         event.setApproverId(adminId);
 
+        event.transitionTo(EventStatus.PUBLISHED);
+        event.setEventPublishInstant(Instant.now());
+
         Events saved = eventRepository.save(event);
-        log.info("Event id={} approved: {} -> {}", eventId, previousStatus, saved.getStatus());
+        log.info("Event id={} approved and published: {} -> {}", eventId, previousStatus, saved.getStatus());
         return convertToDto(saved);
     }
 
     @Override
     @Transactional
-    public EventInfoDto rejectEvent(Long eventId, Long adminId, String reason) {
+    public EventInfoDto rejectEvent(String eventId, String adminId, String reason) {
         Events event = findEventOrThrow(eventId);
         EventStatus previousStatus = event.getStatus();
 
@@ -172,7 +181,7 @@ public class EventManagementServiceImpl implements EventManagementService {
     }
 
     @Override
-    public List<EventInfoDto> getEventsByOrganizer(Long organizerId) {
+    public List<EventInfoDto> getEventsByOrganizer(String organizerId) {
         return eventRepository.findByEventOwnerId(organizerId)
                 .stream().map(this::convertToDto).toList();
     }
@@ -186,7 +195,7 @@ public class EventManagementServiceImpl implements EventManagementService {
     }
 
     @Override
-    public List<EventInfoDto> getEventsByOrganizerAndStatus(Long organizerId, String status) {
+    public List<EventInfoDto> getEventsByOrganizerAndStatus(String organizerId, String status) {
         EventStatus eventStatus = EventStatus.fromString(status);
         log.debug("Fetching events for organizer id={}, status={}", organizerId, eventStatus);
         return eventRepository.findByEventOwnerIdAndStatus(organizerId, eventStatus).stream()
@@ -196,7 +205,7 @@ public class EventManagementServiceImpl implements EventManagementService {
 
     @Override
     @Transactional
-    public EventInfoDto updateEventStatus(Long id, String status) {
+    public EventInfoDto updateEventStatus(String id, String status) {
         Events event = findEventOrThrow(id);
         EventStatus newStatus = EventStatus.fromString(status);
         EventStatus previousStatus = event.getStatus();
@@ -213,19 +222,19 @@ public class EventManagementServiceImpl implements EventManagementService {
         return convertToDto(saved);
     }
 
-    private String findOrganizerNameById(Long eventOwnerId) {
+    private String findOrganizerNameById(String eventOwnerId) {
         return userRepository.findById(eventOwnerId)
                 .map(User::getUsername)
                 .orElse("Unknown Organizer");
     }
 
-        public Events findEventOrThrow(Long id) {
+    public Events findEventOrThrow(String id) {
         return eventRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Event", id));
     }
 
 
-    private Long findTicketsSoldForEvent(Long eventId) {
+    private Long findTicketsSoldForEvent(String eventId) {
         return (long) ticketRepository.findByEvent_EventIdAndStatus(eventId, "BOOKED")
                 .stream()
                 .mapToInt(Ticket::getQuantity)
@@ -238,5 +247,49 @@ public class EventManagementServiceImpl implements EventManagementService {
                 .orElse("Unknown");
         Long ticketsSold = findTicketsSoldForEvent(event.getEventId());
         return mapper.convertEventToDto(event, ownerName, ticketsSold);
+    }
+
+    @Transactional
+    public List<TicketTypeResponse> assignTicketTypesToEvent(String eventId, List<TicketTypeItemRequest> items) {
+        log.info("Assigning {} ticket types to event id={}", items.size(), eventId);
+
+        Events event = findEventOrThrow(eventId);
+
+        List<TicketType> ticketTypes = items.stream()
+                .map(item -> TicketType.builder()
+                        .eventId(eventId)
+                        .ticketType(item.getTicketType())
+                        .description(item.getDescription())
+                        .price(item.getPrice())
+                        .totalQuantity(item.getTotalQuantity())
+                        .waitlistCapacity(item.getWaitlistCapacity() != null ? item.getWaitlistCapacity() : 0)
+                        .soldQuantity(0)
+                        .build())
+                .toList();
+
+        List<TicketType> saved = ticketTypeRepository.saveAll(ticketTypes);
+        log.info("Assigned {} ticket types to event id={}", saved.size(), eventId);
+        return saved.stream().map(this::toTicketTypeResponse).toList();
+    }
+
+    public List<TicketTypeResponse> getTicketTypesByEvent(String eventId) {
+        log.debug("Fetching ticket types for event id={}", eventId);
+        return ticketTypeRepository.findByEventId(eventId).stream()
+                .map(this::toTicketTypeResponse)
+                .toList();
+    }
+
+    private TicketTypeResponse toTicketTypeResponse(TicketType tt) {
+        return TicketTypeResponse.builder()
+                .id(tt.getId())
+                .eventId(tt.getEventId())
+                .ticketType(tt.getTicketType())
+                .description(tt.getDescription())
+                .price(tt.getPrice())
+                .totalQuantity(tt.getTotalQuantity())
+                .waitlistCapacity(tt.getWaitlistCapacity())
+                .soldQuantity(tt.getSoldQuantity())
+                .availableQuantity(tt.getAvailableQuantity())
+                .build();
     }
 }

@@ -7,10 +7,10 @@ import lombok.Data;
 @Data
 public class BookTicketRequest {
     @NotNull(message = "eventId is required")
-    private Long eventId;
+    private String eventId;
 
     @NotNull(message = "userId is required")
-    private Long userId;
+    private String userId;
 
     @NotNull(message = "quantity is required")
     @Min(value = 1, message = "quantity must be at least 1")

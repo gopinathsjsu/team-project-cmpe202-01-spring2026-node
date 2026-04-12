@@ -12,15 +12,15 @@ import java.time.Instant;
 import java.util.List;
 
 @Repository
-public interface EventRepository extends JpaRepository<Events, Long> {
+public interface EventRepository extends JpaRepository<Events, String> {
 
     List<Events> findByStatus(EventStatus status);
 
-    List<Events> findByEventOwnerId(Long ownerId);
+    List<Events> findByEventOwnerId(String ownerId);
 
     List<Events> findByEventNameContainingIgnoreCase(String name);
 
-    List<Events> findByEventOwnerIdAndStatus(Long ownerId, EventStatus status);
+    List<Events> findByEventOwnerIdAndStatus(String ownerId, EventStatus status);
 
     @Query("SELECT e FROM Events e WHERE e.status = 'PUBLISHED' AND e.eventStartInstant > CURRENT_TIMESTAMP")
     List<Events> findActiveEvents();

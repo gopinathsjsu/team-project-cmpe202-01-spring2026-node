@@ -23,8 +23,8 @@ import java.util.List;
 public class Events {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long eventId;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String eventId;
 
     @NotBlank(message = "Event name is required")
     private String eventName;
@@ -73,9 +73,9 @@ public class Events {
     private LocalDate eventPublishDate;
 
     @NotNull(message = "Event owner is required")
-    private Long eventOwnerId;
+    private String eventOwnerId;
 
-    private Long approverId;
+    private String approverId;
 
     @Enumerated(EnumType.STRING)
     @NotNull

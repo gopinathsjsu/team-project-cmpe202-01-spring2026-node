@@ -13,7 +13,7 @@ import java.util.List;
 @Builder
 public class EventInfoDto {
 
-    private Long eventId;
+    private String eventId;
     private String eventName;
     private String eventDescription;
     private List<String> categories;
@@ -35,7 +35,7 @@ public class EventInfoDto {
     // IANA timezone id supplied by client (e.g. "America/Los_Angeles"). Optional but recommended.
     private String eventTimeZone;
 
-    private Long eventOwnerId;
+    private String eventOwnerId;
     private String eventOwnerName;
     private EventStatus status;
     private List<String> allowedTransitions;
