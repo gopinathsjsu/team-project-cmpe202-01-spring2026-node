@@ -37,9 +37,10 @@ const createGoogleCalendarLink = (event: any) => {
     try {
         // Remove dashes, colons, and milliseconds to match Google Calendar format (YYYYMMDDTHHMMSSZ)
         const start = new Date(startDateStr).toISOString().replace(/-|:|\.\d\d\d/g, '');
-        console.log(start);
+        console.log("Start Date String:", startDateStr);
+        console.log("Start Date:", start);
         const end = new Date(endDateStr).toISOString().replace(/-|:|\.\d\d\d/g, '');
-        return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&ctz=${timezone}&details=${details}&location=${location}`;
+        return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${details}&location=${location}`;
     } catch (e) {
         return '#';
     }
@@ -91,7 +92,8 @@ export function Dashboard() {
     useEffect(() => {
         if (currentUser?.role === 'USER' && currentUser?.id) {
             api.getUserBookings(currentUser.id)
-                .then(bookings => setMyBookings(bookings.filter((b: any) => b.status === 'CONFIRMED' || b.status === 'confirmed')))
+                //.then(bookings => setMyBookings(bookings.filter((b: any) => b.status === 'CONFIRMED' || b.status === 'confirmed')))
+                .then(bookings => setMyBookings(bookings))
                 .catch(console.error);
             console.log("Current User ID:", currentUser.id);
             console.log("My Bookings from api:", myBookings);
@@ -100,7 +102,6 @@ export function Dashboard() {
 
     // Attendee Dashboard
     if (currentUser?.role === 'USER') {
-        const totalSpent = myBookings.reduce((sum: number, b: any) => sum + b.totalAmount, 0);
         console.log("My Bookings:", myBookings);
         /* useEffect(() => {
         if (currentUser?.id) {
@@ -173,7 +174,7 @@ export function Dashboard() {
                                         // if (!event) return null;
                                         console.log("Booking:", booking);
                                         return (
-                                            <div key={booking.id} className="flex items-start gap-4 p-4 border rounded-lg">
+                                            <div key={booking.bookingId} className="flex items-start gap-4 p-4 border rounded-lg">
                                                 <img
                                                     src={resolveEventImageUrl(booking.imageUrl)}
                                                     alt={booking.eventDescription}
@@ -198,6 +199,13 @@ export function Dashboard() {
                                                 <div className="flex flex-col gap-2">
                                                     <Button
                                                         variant="outline"
+                                                        onClick={() => navigate(`/booking/${booking.bookingId}`)}
+                                                    >
+                                                        <Eye className="h-4 w-4 mr-2" />
+                                                        Booking Details
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
                                                         onClick={() => navigate(`/events/${booking.eventId}`)}
                                                     >
                                                         View Event
@@ -205,6 +213,7 @@ export function Dashboard() {
                                                     <Button
                                                         variant="secondary"
                                                         className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200"
+                                                        disabled={new Date(booking.eventStartInstant) < new Date() || booking.status.toLowerCase() !== 'confirmed'}
                                                         onClick={() => window.open(createGoogleCalendarLink({
                                                             eventName: booking.eventDescription,
                                                             eventStartInstant: booking.eventStartInstant,

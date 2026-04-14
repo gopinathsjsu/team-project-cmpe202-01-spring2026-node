@@ -146,14 +146,14 @@ export function runAPI() {
 
     // Bookings
     getBookings: async (): Promise<Booking[]> => {
-      const response = await axios.get(`${API_BASE_URL}/bookings`);
+      const response = await axios.get(`${API_BASE_URL}/bookings/allBookings`);
       const list = Array.isArray(response.data) ? response.data : [];
-      return list.map((d: { ticketId: number; eventId: number; eventName?: string; userId: number; username?: string; quantity: number; status: string; bookingDate: string; ticketType?: string; totalPrice: number }) => ({
+      return list.map((d: { ticketId: number; eventId: number; eventName?: string; userId: number; username?: string; email?: string; quantity: number; status: string; bookingDate: string; ticketType?: string; totalPrice: number }) => ({
         id: String(d.ticketId),
         eventId: String(d.eventId),
         userId: String(d.userId),
         userName: d.username ?? '',
-        userEmail: '',
+        userEmail: d.email ?? '',
         ticketQuantity: d.quantity,
         totalAmount: d.totalPrice ?? 0,
         bookingDate: d.bookingDate,
@@ -186,6 +186,44 @@ export function runAPI() {
         status: d.status === 'BOOKED' ? 'confirmed' : 'cancelled',
       };
     },
+
+    getAllBookings: async (): Promise<Booking[]> => {
+      const response = await axios.get(`${API_BASE_URL}/bookings/allBookings`);
+      const list = Array.isArray(response.data) ? response.data : [];
+      return list;
+    },
+    getBookingById: async (id: string): Promise<Booking | null> => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/bookings/bookingById/${id}`);
+        const d = response.data;
+        return {
+          id: String(d.ticketId),
+          eventId: String(d.eventId),
+          userId: String(d.userId),
+          userName: d.username ?? '',
+          userEmail: d.email ?? '',
+          ticketQuantity: d.quantity,
+          totalAmount: d.totalPrice ?? 0,
+          bookingDate: d.bookingDate,
+          status: d.status === 'BOOKED' ? 'confirmed' : 'cancelled',
+        };
+      } catch (error) {
+        console.error(`Error fetching booking with id ${id}:`, error);
+        return null;
+      }
+    },
+
+    getUserBookingByBookingId: async (id: string): Promise<UserBooking | null> => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/bookings/userBookingById/${id}`);
+        const d = response.data;
+        return d;
+      } catch (error) {
+        console.error(`Error fetching booking with id ${id}:`, error);
+        return null;
+      }
+    },
+
     cancelBooking: async (id: string): Promise<void> => {
       await axios.put(`${API_BASE_URL}/bookings/${id}/cancel`);
     },

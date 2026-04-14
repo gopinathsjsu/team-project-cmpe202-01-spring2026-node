@@ -12,5 +12,7 @@ public interface TicketTypeRepository extends JpaRepository<TicketType, String> 
 
     List<TicketType> findByEventId(String eventId);
 
-    Optional<TicketType> findByTicketType(String ticketType);
+    Optional<TicketType> findByTicketTypeAndEventId(String ticketType, String eventId);
+
+    void deleteByTicketTypeAndEventId(String ticketType, String eventId);
 }

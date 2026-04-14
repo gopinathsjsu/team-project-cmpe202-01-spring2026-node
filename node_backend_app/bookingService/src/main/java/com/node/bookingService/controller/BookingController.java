@@ -1,5 +1,6 @@
 package com.node.bookingService.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.node.bookingService.dto.BookingResponseForUser;
 import com.node.bookingService.dto.BookingResponse;
 import com.node.bookingService.dto.CreateBookingRequest;
@@ -24,17 +25,29 @@ public class BookingController {
     @Autowired
     private BookingService bookingService;
 
-    @PostMapping({"", "/"})
+    @PostMapping
     public ResponseEntity<BookingResponse> createBooking(@Valid @RequestBody CreateBookingRequest request) {
         log.info("POST /api/v1/bookings — eventId={}, userId={}", request.getEventId(), request.getUserId());
         BookingResponse response = bookingService.createBooking(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/bookingById/{id}")
     public ResponseEntity<BookingResponse> getBookingById(@PathVariable String id) {
         log.debug("GET /api/v1/bookings/{}", id);
         return ResponseEntity.ok(bookingService.getBookingById(id));
+    }
+
+    @GetMapping("/userBookingById/{id}")
+    public ResponseEntity<BookingResponseForUser> getUserBookingById(@PathVariable String id) {
+        log.debug("GET /api/v1/bookings/{}", id);
+        return ResponseEntity.ok(bookingService.getUserBookingById(id));
+    }
+
+    @GetMapping("/allBookings")
+    public ResponseEntity<List<BookingResponse>> getAllBookings() {
+        log.debug("GET /api/v1/bookings/allBookings");
+        return ResponseEntity.ok(bookingService.getAllBookings());
     }
 
     @GetMapping("/reference/{reference}")
@@ -87,5 +100,19 @@ public class BookingController {
     public ResponseEntity<BookingResponse> checkInBooking(@PathVariable String id) {
         log.info("PUT /api/v1/bookings/{}/checkin", id);
         return ResponseEntity.ok(bookingService.checkInBooking(id));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteBooking(@PathVariable String id) {
+        log.info("DELETE /api/v1/bookings/{}", id);
+        bookingService.deleteBooking(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{userId}/{eventId}/cancel")
+    public ResponseEntity<Void> cancelBookingByUserIdAndEventId(@PathVariable String userId, @PathVariable String eventId) {
+        log.info("DELETE /api/v1/bookings/{}/{}/cancel", userId, eventId);
+        bookingService.cancelBookingByUserIdAndEventId(userId, eventId);
+        return ResponseEntity.noContent().build();
     }
 }
