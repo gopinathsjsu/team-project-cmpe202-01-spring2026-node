@@ -13,12 +13,15 @@ import com.node.bookingService.service.payment.PaymentStrategyFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import com.node.bookingService.dto.EventLocationDto;
+import com.node.bookingService.dto.EventInfoDto;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.Map;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -34,6 +37,9 @@ public class BookingServiceImpl implements BookingService {
     private PaymentStrategyFactory paymentStrategyFactory;
     @Autowired
     private EventServiceClient eventServiceClient;
+
+    @Autowired
+    ObjectMapper objectMapper;
 
     @Override
     @Transactional
@@ -56,6 +62,7 @@ public class BookingServiceImpl implements BookingService {
 
         String bookingRef = generateBookingReference();
         Booking booking = Booking.builder()
+                .bookingId(UUID.randomUUID().toString())
                 .bookingReference(bookingRef)
                 .eventId(request.getEventId())
                 .userId(request.getUserId())
@@ -98,9 +105,9 @@ public class BookingServiceImpl implements BookingService {
             log.debug("Reserved {} tickets of type '{}' for booking {}", itemReq.getQuantity(), ticketType.getName(), bookingRef);
         }*/
 
-        TicketType ticketType = ticketTypeRepository.findByTicketType(request.getTicketType())
+        TicketType ticketType = ticketTypeRepository.findByTicketTypeAndEventId(request.getTicketType(), request.getEventId())
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Ticket type not found with name: " + request.getTicketType()));
+                        "Ticket type not found with name: " + request.getTicketType() + " and event id: " + request.getEventId()));
 
         if (!ticketType.hasAvailability(request.getQuantity())) {
             throw new BookingException("Insufficient tickets for type '" + ticketType.getTicketType()
@@ -108,6 +115,7 @@ public class BookingServiceImpl implements BookingService {
         }
 
         ticketType.setSoldQuantity(ticketType.getSoldQuantity() + request.getQuantity());
+        log.info("Sold quantity for ticket type id={}: {}", ticketType.getId(), ticketType.getSoldQuantity());
         ticketTypeRepository.save(ticketType);
 
         BigDecimal subtotal = ticketType.getPrice().multiply(BigDecimal.valueOf(request.getQuantity()));
@@ -153,6 +161,14 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    public BookingResponseForUser getUserBookingById(String bookingId) {
+        log.debug("Fetching booking id={}", bookingId);
+        Booking booking = findBookingOrThrow(bookingId);
+        EventInfoDto event = eventServiceClient.getEventById(booking.getEventId());
+        return toResponseForUser(booking, event);
+    }
+
+    @Override
     public BookingResponse getBookingByReference(String reference) {
         log.debug("Fetching booking ref={}", reference);
         return toResponse(bookingRepository.findByBookingReference(reference)
@@ -165,10 +181,20 @@ public class BookingServiceImpl implements BookingService {
         List<Booking> bookings = bookingRepository.findByUserId(userId);
         // Collect distinct event IDs to batch-fetch event data and avoid N+1 calls
         List<String> eventIds = bookings.stream().map(Booking::getEventId).distinct().toList();
-        Map<String, Map<String, Object>> events = eventServiceClient.getEventsByIds(eventIds);
-
+        //List<EventInfoDto> events = eventServiceClient.getEventsByIds(eventIds);
         return bookings.stream()
-                .map(b -> toResponseForUser(b, events != null ? events.get(b.getEventId()) : null))
+                .map(b -> toResponseForUser(b, eventServiceClient.getEventById(b.getEventId())))
+                .toList();
+    }
+
+    @Override
+    public List<BookingResponse> getAllBookings() {
+        log.debug("Fetching all bookings");
+        List<Booking> bookings = bookingRepository.findAll();
+        
+        return bookings.stream()
+                .map(this::toResponse)
+                .filter(booking -> booking.getStatus() != BookingStatus.CANCELLED)
                 .toList();
     }
 
@@ -191,7 +217,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public BookingResponse cancelBooking(String bookingId) {
-        Booking booking = findBookingOrThrow(bookingId);
+        Booking booking = findActiveBookingOrThrow(bookingId);
         log.info("Cancelling booking id={}, ref={}", bookingId, booking.getBookingReference());
 
         BookingStatus previousStatus = booking.getStatus();
@@ -247,7 +273,7 @@ public class BookingServiceImpl implements BookingService {
     }
 
     private void releaseTickets(Booking booking) {
-        TicketType ticketType = ticketTypeRepository.findByTicketType(booking.getTicketType())
+        TicketType ticketType = ticketTypeRepository.findByTicketTypeAndEventId(booking.getTicketType(), booking.getEventId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Ticket type not found with name: " + booking.getTicketType()));
         ticketType.setSoldQuantity(Math.max(0, ticketType.getSoldQuantity() - booking.getQuantity()));
@@ -260,11 +286,39 @@ public class BookingServiceImpl implements BookingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found with id: " + id));
     }
 
+    private Booking findActiveBookingOrThrow(String id) {
+        return bookingRepository.findByBookingIdAndStatusIn(id, List.of(BookingStatus.CONFIRMED))
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found with id: " + id + " and status in: " + List.of(BookingStatus.CONFIRMED, BookingStatus.PENDING)));
+    }
+
     private String generateBookingReference() {
         return "BK-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 
+    @Override
+    public void cancelBookingByUserIdAndEventId(String userId, String eventId) {
+        log.info("Cancelling booking for user id={}, event id={}", userId, eventId);
+        List<Booking> bookings = bookingRepository.findByUserIdAndEventId(userId, eventId);
+        bookings.forEach(booking -> {
+            booking.transitionTo(BookingStatus.CANCELLED);
+            booking.setCancelledAt(Instant.now());
+            bookingRepository.save(booking);
+        });
+        log.info("Cancelled {} bookings for user id={}, event id={}", bookings.size(), userId, eventId);
+    }
+
+    @Override
+    @Transactional
+    public void deleteBooking(String bookingId) {
+        log.info("Deleting booking id={}", bookingId);
+        bookingRepository.deleteByBookingId(bookingId);
+        log.info("Deleted booking id={}", bookingId);
+    }
+
     private BookingResponse toResponse(Booking booking) {
+        log.info("To response: {}", booking);
         List<String> allowed = booking.getStatus().allowedTransitions().stream()
                 .map(Enum::name).toList();
 
@@ -286,42 +340,41 @@ public class BookingServiceImpl implements BookingService {
                 .updatedAt(booking.getUpdatedAt())
                 .build();
     }
-    private BookingResponseForUser toResponseForUser(Booking booking, Map<String, Object> event) {
+    private BookingResponseForUser toResponseForUser(Booking booking, EventInfoDto event) {
 
-        // Determine allowed transitions the same way as in toResponse
+        log.debug("To response for user: {}", event);
+
         List<String> allowed = booking.getStatus().allowedTransitions().stream()
                 .map(Enum::name).toList();
 
-        String eventName = getStringFromMap(event, "eventName", "name");
-        String eventStartInstant = getStringFromMap(event, "eventStartInstant", "startDate", "start");
-        String eventEndInstant = getStringFromMap(event, "eventEndInstant", "endDate", "end");
-        String eventLocation = getStringFromMap(event, "eventLocation", "location", "venue");
-        String eventDescription = getStringFromMap(event, "eventDescription", "description");
-        String eventImageUrl = getStringFromMap(event, "imageUrl", "image", "image_url");
-        String eventWebsite = getStringFromMap(event, "eventWebsite", "website", "url");
-        String eventContactEmail = getStringFromMap(event, "eventContactEmail", "contactEmail", "contact_email");
-        String eventContactPhone = getStringFromMap(event, "eventContactPhone", "contactPhone", "contact_phone");
+        System.out.println("eventLocation: " + event.getEventLocation().getLocationName() + " " + event.getEventLocation().getLocationAddress() + " " + event.getEventLocation().getLatitude() + " " + event.getEventLocation().getLongitude());
+        String eventDescription = event.getEventDescription();
+        String eventImageUrl = event.getImageUrl();
 
         return BookingResponseForUser.builder()
                 .bookingId(booking.getBookingId())
                 .bookingReference(booking.getBookingReference())
                 .eventId(booking.getEventId())
                 .userId(booking.getUserId())
+                //.userName(booking.getUserName())
                 .userEmail(booking.getUserEmail())
                 .status(booking.getStatus())
                 .allowedTransitions(allowed)
                 .totalAmount(booking.getTotalAmount())
                 .paymentMethod(booking.getPaymentMethod())
                 .paymentTransactionId(booking.getPaymentTransactionId())
-                .eventName(eventName)
-                .eventStartInstant(eventStartInstant)
-                .eventEndInstant(eventEndInstant)
-                .eventLocation(eventLocation)
+                .eventName(event.getEventName())
+                .eventStartInstant(event.getEventStartInstant())
+                .eventEndInstant(event.getEventEndInstant())
+                //.eventLocation(eventLocation)
+                .eventLocation(EventLocationDto.builder()
+                        .locationName(event.getEventLocation().getLocationName() != null ? event.getEventLocation().getLocationName() : event.getEventLocation().getLocationAddress())
+                        .locationAddress(event.getEventLocation().getLocationAddress() != null ? event.getEventLocation().getLocationAddress() : event.getEventLocation().getLocationName()  )
+                        .latitude(event.getEventLocation().getLatitude())
+                        .longitude(event.getEventLocation().getLongitude())
+                        .build())
                 .eventDescription(eventDescription)
                 .eventImageUrl(eventImageUrl)
-                .eventWebsite(eventWebsite)
-                .eventContactEmail(eventContactEmail)
-                .eventContactPhone(eventContactPhone)
 
                 //.eventWebsite(event.getEventWebsite())
                 //.eventContactEmail(event.getEventContactEmail())
@@ -330,17 +383,13 @@ public class BookingServiceImpl implements BookingService {
                 .quantity(booking.getQuantity())
                 .createdAt(booking.getCreatedAt())
                 .updatedAt(booking.getUpdatedAt())
+                .eventOwnerName(event.getEventOwnerName())
+                .eventOwnerId(event.getEventOwnerId())
+                .eventTimeZone(event.getEventTimeZone())
+                //.eventPublishInstant(event.getEventPublishInstant())
+                //.eventWebsite(event.getEventWebsite())
+                //.eventContactEmail(event.getEventContactEmail())
                 .build();
-    }
-
-    // Helper to safely extract a String from a Map using multiple candidate keys
-    private String getStringFromMap(Map<String, Object> map, String... keys) {
-        if (map == null) return null;
-        for (String key : keys) {
-            Object v = map.get(key);
-            if (v != null) return v.toString();
-        }
-        return null;
     }
 
     private TicketTypeResponse toTicketTypeResponse(TicketType tt) {
@@ -356,4 +405,5 @@ public class BookingServiceImpl implements BookingService {
                 .availableQuantity(tt.getAvailableQuantity())
                 .build();
     }
+
 }

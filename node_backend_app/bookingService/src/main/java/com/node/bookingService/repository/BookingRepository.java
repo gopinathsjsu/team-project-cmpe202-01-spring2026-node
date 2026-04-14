@@ -28,4 +28,10 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
     Integer countConfirmedTicketsForEvent(@Param("eventId") String eventId);
 
     boolean existsByUserIdAndEventIdAndStatusIn(String userId, String eventId, List<BookingStatus> statuses);
+
+    List<Booking> findByUserIdAndEventId(String userId, String eventId);
+
+    List<Booking> findByBookingIdAndStatusIn(String bookingId, List<BookingStatus> statuses);
+
+    void deleteByBookingId(String bookingId);
 }

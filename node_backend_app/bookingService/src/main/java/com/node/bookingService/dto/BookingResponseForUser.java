@@ -15,6 +15,7 @@ public class BookingResponseForUser {
     private String bookingReference;
     private String eventId;
     private String userId;
+    private String userName;
     private String userEmail;
     private BookingStatus status;
     private List<String> allowedTransitions;
@@ -27,12 +28,16 @@ public class BookingResponseForUser {
     private Instant createdAt;
     private Instant updatedAt;
     private String eventName;
-    private String eventStartInstant;
-    private String eventEndInstant;
-    private String eventLocation;
+    private Instant eventStartInstant;
+    private Instant eventEndInstant;
+    private EventLocationDto eventLocation;
     private String eventDescription;
     private String eventImageUrl;
     private String eventWebsite;
     private String eventContactEmail;
     private String eventContactPhone;
+    private String eventOwnerName;
+    private String eventOwnerId;
+    private String eventTimeZone;
+
 }

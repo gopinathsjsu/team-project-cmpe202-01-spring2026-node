@@ -1,4 +1,4 @@
-package com.node.eventServices.model.tickets;
+/* package com.node.eventServices.model.tickets;
 
 import com.node.eventServices.model.events.Events;
 import jakarta.persistence.*;
@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+
+
 
 @Entity
 @Table(name = "tickets")
@@ -49,3 +51,4 @@ public class Ticket {
         }
     }
 }
+ */

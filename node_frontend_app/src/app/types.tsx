@@ -117,7 +117,8 @@ export interface TicketTypeApi {
 }
 
 export interface UserBooking {
-  id: string;
+  bookingId: string;
+  bookingReference: string;
   eventId: string;
   userId: string;
   userName: string;

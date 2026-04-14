@@ -56,13 +56,14 @@ export function EventDetail() {
     }
 
     // Backend may not return ticketsSold; derive from bookings (ticket list) when missing
+    const startDate = new Date(String(event.eventStartInstant || event.eventStartDate || event.startDate || '').replace('Z', ''));
     const ticketsSold = typeof event.ticketsSold === 'number'
         ? event.ticketsSold
         : bookings.reduce((sum, b) => sum + (b.ticketQuantity ?? 0), 0);
     const maxCapacity = event.maxCapacity ?? event.capacity ?? 0;
     const availableTickets = Math.max(0, maxCapacity - ticketsSold);
     const percentageSold = maxCapacity > 0 ? (ticketsSold / maxCapacity) * 100 : 0;
-    const isBookable = event.status === 'PUBLISHED' || event.status === 'APPROVED';
+    const isBookable = event.status === 'PUBLISHED' || event.status === 'APPROVED' || startDate > new Date();
 
     const isAlreadyBookedByUser = bookings.some(b => String(b.userId) === String(currentUser?.id) && b.status === 'CONFIRMED');
     console.log('isAlreadyBookedByUser:', isAlreadyBookedByUser, 'bookings:', bookings, 'currentUser:', currentUser);
