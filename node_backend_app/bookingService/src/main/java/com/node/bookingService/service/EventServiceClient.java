@@ -15,6 +15,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
+import com.node.bookingService.dto.EventLocationDto;
+import com.node.bookingService.dto.EventInfoDto;
 
 @Slf4j
 @Component
@@ -32,13 +34,13 @@ public class EventServiceClient {
     }
 
     @SuppressWarnings("unchecked")
-    public Map<String, Object> getEventById(String eventId) {
+    public EventInfoDto getEventById(String eventId) {
         log.debug("Fetching event id={} from event service", eventId);
         try {
-            Map<String, Object> event = webClient.get()
+           EventInfoDto event = webClient.get()
                     .uri("/api/v1/events/{id}", eventId)
                     .retrieve()
-                    .bodyToMono(Map.class)
+                    .bodyToMono(EventInfoDto.class)
                     .timeout(Duration.ofSeconds(timeoutSeconds))
                     .block();
             log.debug("Event id={} retrieved from event service", eventId);

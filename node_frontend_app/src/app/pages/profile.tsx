@@ -7,6 +7,8 @@ import { Camera, Mail, User as UserIcon, Phone, MapPin, Calendar, Save } from 'l
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
+import { runAPI } from '../api';
+import { useNavigate } from 'react-router';
 
 export function Profile() {
     const { currentUser } = useAuth();
@@ -20,8 +22,24 @@ export function Profile() {
         website: 'https://johndoe.com',
     });
 
+    const api = runAPI();
+    const navigate = useNavigate();
+
     const handleSave = () => {
         // TODO: Connect to backend API
+        /*api.updateUserProfile(formData)
+            .then(() => {
+                toast.success('Profile updated successfully!');
+                setIsEditing(false);
+            })
+            .catch(() => {
+                toast.error('Failed to update profile. Please try again.');
+            });
+            */
+         toast.success('Profile updated successfully!');
+    };
+
+    const handleCancel = () => {
         toast.success('Profile updated successfully!');
         setIsEditing(false);
     };
@@ -29,6 +47,17 @@ export function Profile() {
     const handleChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
+
+    const handleMyTickets = () => {
+        //toast('Navigating to My Tickets...');
+        navigate('/dashboard');
+    };
+
+    const handleSettings = () => {
+        //toast('Navigating to Settings...');
+        navigate('/settings');
+    };
+
 
     return (
         <div className="min-h-screen bg-gray-50 py-8">
@@ -53,7 +82,8 @@ export function Profile() {
                                 <h1 className="text-2xl font-bold">{currentUser?.name}</h1>
                                 <p className="text-gray-600 capitalize">{currentUser?.role}</p>
                                 <p className="text-sm text-gray-500 mt-1">
-                                    Member since {format(new Date(2024, 0, 15), 'MMMM yyyy')}
+                                    //Todo: Replace with actual member since date from backend
+                                    Member since {format(new Date(), 'MMMM yyyy')}
                                 </p>
                             </div>
 
@@ -200,14 +230,15 @@ export function Profile() {
                         <div className="bg-white rounded-lg shadow-sm p-6">
                             <h3 className="font-bold mb-4">Quick Actions</h3>
                             <div className="space-y-2">
-                                <Button variant="outline" className="w-full justify-start">
-                                    <Calendar className="h-4 w-4 mr-2" />
+                                <Button variant="outline" className="w-full justify-start" onClick={handleMyTickets}>
+                                <Calendar className="h-4 w-4 mr-2" />
                                     My Tickets
                                 </Button>
-                                <Button variant="outline" className="w-full justify-start">
+                                
+                                {/* <Button variant="outline" className="w-full justify-start" onClick={handleSettings()}>
                                     <UserIcon className="h-4 w-4 mr-2" />
                                     Settings
-                                </Button>
+                                </Button> */}
                             </div>
                         </div>
 

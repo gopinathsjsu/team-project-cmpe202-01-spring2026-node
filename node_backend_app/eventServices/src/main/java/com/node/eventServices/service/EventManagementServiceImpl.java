@@ -7,7 +7,6 @@ import com.node.eventServices.exception.ResourceNotFoundException;
 import com.node.eventServices.model.User.User;
 import com.node.eventServices.model.events.EventStatus;
 import com.node.eventServices.model.events.TicketType;
-import com.node.eventServices.model.tickets.Ticket;
 import com.node.eventServices.model.events.Events;
 import com.node.eventServices.repository.EventRepository;
 import com.node.eventServices.repository.TicketRepository;
@@ -235,9 +234,9 @@ public class EventManagementServiceImpl implements EventManagementService {
 
 
     private Long findTicketsSoldForEvent(String eventId) {
-        return (long) ticketRepository.findByEvent_EventIdAndStatus(eventId, "BOOKED")
+        return (long) ticketRepository.findByEventId(eventId)
                 .stream()
-                .mapToInt(Ticket::getQuantity)
+                .mapToInt(TicketType::getSoldQuantity)
                 .sum();
     }
 
@@ -246,6 +245,12 @@ public class EventManagementServiceImpl implements EventManagementService {
                 .map(User::getUsername)
                 .orElse("Unknown");
         Long ticketsSold = findTicketsSoldForEvent(event.getEventId());
+        log.info("Tickets sold for event id={}: {}", event.getEventId(), ticketsSold);
+        List<TicketType> ticketTypes = ticketTypeRepository.findByEventId(event.getEventId());
+        log.info("Ticket types for event id={}: {}", event.getEventId(), ticketTypes);
+        for (TicketType ticketType : ticketTypes) {
+            log.info("Ticket type id={}: {}", ticketType.getId(), ticketType.getTicketType());
+        }
         return mapper.convertEventToDto(event, ownerName, ticketsSold);
     }
 

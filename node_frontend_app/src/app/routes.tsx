@@ -11,6 +11,8 @@ import { EventDetail } from './pages/viewEventDetails';
 import { AllEvents } from './pages/events';
 import { Profile } from './pages/profile';
 import { AttendeesPage } from './pages/attendees';
+import { ViewBooking } from './pages/viewBooking';
+import { ContactPage } from './pages/contact';
 
 export default function AppRoutes() {
     return (
@@ -67,6 +69,12 @@ export default function AppRoutes() {
                 }
             />
             <Route path="/events/:id" element={<EventDetail />} />
+            <Route path="/booking/:id" element={
+                <ProtectedRoute allowedRoles={['USER', 'ORGANIZER', 'ADMIN']}>
+                    <ViewBooking />
+                </ProtectedRoute>
+            } />
+            <Route path="/contact" element={<ContactPage />} />
             <Route path="/events" element={<AllEvents />} />
         </Routes>
     );

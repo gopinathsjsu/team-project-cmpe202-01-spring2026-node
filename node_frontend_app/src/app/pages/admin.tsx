@@ -39,7 +39,7 @@ export function AdminPanel() {
         }).catch(console.error);
 
         setBookings([]);
-        api.getBookings().then((data) => {
+        api.getAllBookings().then((data) => {
             setBookings(Array.isArray(data) ? data : []);
         }).catch(console.error);
 
@@ -298,7 +298,7 @@ export function AdminPanel() {
                                     return (
                                         <div key={booking.id} className="flex items-center justify-between p-3 border rounded-lg">
                                             <div className="flex-1">
-                                                <div className="font-medium">{booking.userName}</div>
+                                                <div className="font-medium">{booking.userName || booking.bookingReference || booking.userId}</div>
                                                 <div className="text-sm text-gray-600">{event.eventName}</div>
                                             </div>
                                             <div className="text-right">
