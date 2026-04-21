@@ -9,10 +9,26 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import com.node.eventServices.dto.EventAdminMetricsDto;
+import com.node.eventServices.dto.OrganizerEventSummaryDto;
+import com.node.eventServices.model.events.EventStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 public interface EventManagementService {
     EventInfoDto createEvent(Events event);
     Optional<EventInfoDto> getEventById(String id);
     List<EventInfoDto> getAllEvents();
+
+    Page<EventInfoDto> getAdminEventsPage(EventStatus status, String q, Pageable pageable);
+
+    Page<EventInfoDto> getActiveEventsPage(String q, Pageable pageable);
+
+    Page<EventInfoDto> getOrganizerEventsPage(String organizerId, String tab, Pageable pageable);
+
+    OrganizerEventSummaryDto getOrganizerSummary(String organizerId);
+
+    EventAdminMetricsDto getAdminMetrics();
     List<EventInfoDto> getAllActiveEvents();
     EventInfoDto updateEvent(String id, Events event);
     void deleteEvent(String id);

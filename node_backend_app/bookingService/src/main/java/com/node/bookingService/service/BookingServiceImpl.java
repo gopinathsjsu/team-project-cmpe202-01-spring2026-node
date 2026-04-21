@@ -11,15 +11,18 @@ import com.node.bookingService.dto.PaymentResult;
 import com.node.bookingService.service.payment.PaymentStrategy;
 import com.node.bookingService.service.payment.PaymentStrategyFactory;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.node.bookingService.dto.EventLocationDto;
 import com.node.bookingService.dto.EventInfoDto;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
-import java.util.UUID;
 import java.util.Map;
+import java.util.UUID;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 
@@ -188,6 +191,35 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    public Page<BookingResponseForUser> getBookingsByUserPaged(String userId, Pageable pageable) {
+        log.debug("Fetching paged bookings for user id={}", userId);
+        return bookingRepository.findByUserId(userId, pageable)
+                .map(b -> toResponseForUser(b, eventServiceClient.getEventById(b.getEventId())));
+    }
+
+    @Override
+    public UserBookingCountsDto getUserBookingCounts(String userId) {
+        List<Booking> bookings = bookingRepository.findByUserId(userId);
+        long total = bookings.size();
+        Instant now = Instant.now();
+        Map<String, EventInfoDto> cache = new HashMap<>();
+        long upcoming = 0;
+        for (Booking b : bookings) {
+            EventInfoDto ev = cache.computeIfAbsent(b.getEventId(), eventServiceClient::getEventById);
+            if (ev == null || ev.getEventStartInstant() == null) {
+                continue;
+            }
+            if (!ev.getEventStartInstant().isBefore(now)) {
+                upcoming++;
+            }
+        }
+        return UserBookingCountsDto.builder()
+                .totalBookings(total)
+                .upcomingBookings(upcoming)
+                .build();
+    }
+
+    @Override
     public List<BookingResponse> getAllBookings() {
         log.debug("Fetching all bookings");
         List<Booking> bookings = bookingRepository.findAll();
@@ -199,9 +231,46 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    public Page<BookingResponse> getAllBookingsPaged(Pageable pageable) {
+        return bookingRepository.findByStatusNot(BookingStatus.CANCELLED, pageable).map(this::toResponse);
+    }
+
+    @Override
+    public BookingAdminMetricsDto getAdminMetrics() {
+        long total = bookingRepository.countByStatusNot(BookingStatus.CANCELLED);
+        long confirmed = bookingRepository.countByStatus(BookingStatus.CONFIRMED)
+                + bookingRepository.countByStatus(BookingStatus.CHECKED_IN);
+        return BookingAdminMetricsDto.builder()
+                .totalBookingsNonCancelled(total)
+                .confirmedBookings(confirmed)
+                .build();
+    }
+
+    @Override
     public List<BookingResponse> getBookingsByEvent(String eventId) {
         log.debug("Fetching bookings for event id={}", eventId);
         return bookingRepository.findByEventId(eventId).stream().map(this::toResponse).toList();
+    }
+
+    @Override
+    public Page<BookingResponse> getBookingsByEventPaged(String eventId, Pageable pageable) {
+        log.debug("Fetching paged bookings for event id={}", eventId);
+        return bookingRepository.findByEventId(eventId, pageable).map(this::toResponse);
+    }
+
+    @Override
+    public EventBookingSummaryDto getEventBookingSummary(String eventId) {
+        Integer qty = bookingRepository.sumConfirmedQuantityForEvent(eventId);
+        BigDecimal amt = bookingRepository.sumConfirmedAmountForEvent(eventId);
+        long confirmedCount = bookingRepository.countByEventIdAndStatusIn(
+                eventId, List.of(BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN));
+        long cancelledCount = bookingRepository.countByEventIdAndStatus(eventId, BookingStatus.CANCELLED);
+        return EventBookingSummaryDto.builder()
+                .confirmedBookingCount(confirmedCount)
+                .confirmedTicketQuantity(qty != null ? qty : 0)
+                .confirmedRevenue(amt != null ? amt : BigDecimal.ZERO)
+                .cancelledBookingCount(cancelledCount)
+                .build();
     }
 
     @Override

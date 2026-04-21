@@ -1,4 +1,4 @@
-export type UserRole = 'USER' | 'ORGANIZER' | 'ADMIN';
+export type UserRole = 'ATTENDEE' | 'ORGANIZER' | 'ADMIN';
 
 export interface User {
   id: string;
@@ -142,4 +142,53 @@ export interface UserBooking {
     longitude: number | null;
   };
   eventTimeZone: string;
+}
+
+/** Spring Data `Page` JSON shape */
+export interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+  first: boolean;
+  last: boolean;
+}
+
+export interface EventAdminMetrics {
+  totalEvents: number;
+  publishedEvents: number;
+  submittedEvents: number;
+  platformRevenue: number;
+  ticketsSold: number;
+}
+
+export interface BookingAdminMetrics {
+  totalBookingsNonCancelled: number;
+  confirmedBookings: number;
+}
+
+export interface OrganizerEventSummary {
+  eventCount: number;
+  ticketsSold: number;
+  totalRevenue: number;
+  averageFillPercent: number;
+}
+
+export interface UserBookingCounts {
+  totalBookings: number;
+  upcomingBookings: number;
+}
+
+export interface EventBookingSummary {
+  confirmedBookingCount: number;
+  confirmedTicketQuantity: number;
+  confirmedRevenue: number;
+  cancelledBookingCount: number;
+}
+
+export interface AdminUserRow {
+  id: string;
+  email: string;
+  role: UserRole;
 }
