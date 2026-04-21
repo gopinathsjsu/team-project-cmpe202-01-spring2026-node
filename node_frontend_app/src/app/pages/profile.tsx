@@ -7,7 +7,6 @@ import { Camera, Mail, User as UserIcon, Phone, MapPin, Calendar, Save } from 'l
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
-import { runAPI } from '../api';
 import { useNavigate } from 'react-router';
 
 export function Profile() {
@@ -22,7 +21,6 @@ export function Profile() {
         website: 'https://johndoe.com',
     });
 
-    const api = runAPI();
     const navigate = useNavigate();
 
     const handleSave = () => {
@@ -39,11 +37,6 @@ export function Profile() {
          toast.success('Profile updated successfully!');
     };
 
-    const handleCancel = () => {
-        toast.success('Profile updated successfully!');
-        setIsEditing(false);
-    };
-
     const handleChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
@@ -52,12 +45,6 @@ export function Profile() {
         //toast('Navigating to My Tickets...');
         navigate('/dashboard');
     };
-
-    const handleSettings = () => {
-        //toast('Navigating to Settings...');
-        navigate('/settings');
-    };
-
 
     return (
         <div className="min-h-screen bg-gray-50 py-8">
