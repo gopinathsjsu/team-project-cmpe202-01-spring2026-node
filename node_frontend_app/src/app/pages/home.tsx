@@ -15,9 +15,11 @@ export default function Home() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        api.getActiveEvents().then((data: any[]) => {
-            setFeaturedEvent(Array.isArray(data) ? data.slice(0, 6) : []);
-        }).catch(() => setFeaturedEvent([])).finally(() => setLoading(false));
+        api.getActiveEventsPaged({ page: 0, size: 6 })
+            .then((res) => (Array.isArray(res.content) ? res.content : []))
+            .catch(() => [])
+            .then((rows) => setFeaturedEvent(rows))
+            .finally(() => setLoading(false));
 
         api.getCategories().then((data) => {
             setCategories(Array.isArray(data) ? data : []);

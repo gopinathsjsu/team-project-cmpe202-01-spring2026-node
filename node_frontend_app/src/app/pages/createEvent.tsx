@@ -252,7 +252,7 @@ export function CreateEvent() {
         console.error(ticketErr);
         toast.error(
           ticketErr?.response?.data?.message ??
-            'Event saved, but ticket types failed to sync. Edit the event to add them in the booking service.'
+          'Event saved, but ticket types failed to sync. Edit the event to add them in the booking service.'
         );
       }
 
@@ -390,6 +390,7 @@ export function CreateEvent() {
                     <Textarea
                       id="description"
                       value={formData.eventDescription}
+                      maxLength={255}
                       onChange={(e) => setFormData(prev => ({ ...prev, eventDescription: e.target.value }))}
                       placeholder="Describe your event..."
                       rows={6}
