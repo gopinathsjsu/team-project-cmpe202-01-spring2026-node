@@ -1,5 +1,7 @@
 package com.node.eventServices.service;
 
+import com.node.eventServices.dto.EventAdminMetricsDto;
+import com.node.eventServices.dto.OrganizerEventSummaryDto;
 import com.node.eventServices.dto.EventInfoDto;
 import com.node.eventServices.dto.TicketTypeItemRequest;
 import com.node.eventServices.dto.TicketTypeResponse;
@@ -18,9 +20,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Slf4j
 @Service
@@ -67,6 +73,79 @@ public class EventManagementServiceImpl implements EventManagementService {
                 .toList();
         log.info("Retrieved {} events", events.size());
         return events;
+    }
+
+    @Override
+    public Page<EventInfoDto> getAdminEventsPage(EventStatus status, String q, Pageable pageable) {
+        String qq = (q == null || q.isBlank()) ? null : q.trim();
+        Page<Events> page = eventRepository.findAdminPage(status, qq, pageable);
+        return page.map(this::convertToDto);
+    }
+
+    @Override
+    public Page<EventInfoDto> getActiveEventsPage(String q, Pageable pageable) {
+        String qq = (q == null || q.isBlank()) ? null : q.trim();
+        return eventRepository.findActiveEventsPage(qq, pageable).map(this::convertToDto);
+    }
+
+    @Override
+    public Page<EventInfoDto> getOrganizerEventsPage(String organizerId, String tab, Pageable pageable) {
+        String t = tab == null || tab.isBlank() ? "all" : tab.trim().toLowerCase();
+        Page<Events> page;
+        switch (t) {
+            case "published":
+                page = eventRepository.findByEventOwnerIdAndStatus(organizerId, EventStatus.PUBLISHED, pageable);
+                break;
+            case "submitted":
+                page = eventRepository.findByEventOwnerIdAndStatus(organizerId, EventStatus.SUBMITTED, pageable);
+                break;
+            case "completed":
+                page = eventRepository.findByEventOwnerIdAndStatus(organizerId, EventStatus.COMPLETED, pageable);
+                break;
+            case "draft":
+                page = eventRepository.findByEventOwnerIdAndStatus(organizerId, EventStatus.DRAFT, pageable);
+                break;
+            case "rejected":
+                page = eventRepository.findByEventOwnerIdAndStatusIn(
+                        organizerId, List.of(EventStatus.REJECTED, EventStatus.CANCELLED), pageable);
+                break;
+            default:
+                page = eventRepository.findByEventOwnerId(organizerId, pageable);
+        }
+        return page.map(this::convertToDto);
+    }
+
+    @Override
+    public OrganizerEventSummaryDto getOrganizerSummary(String organizerId) {
+        long count = eventRepository.countByEventOwnerId(organizerId);
+        Long sold = ticketTypeRepository.sumSoldQuantityForOrganizer(organizerId);
+        BigDecimal rev = ticketTypeRepository.sumRevenueForOrganizer(organizerId);
+        Long cap = eventRepository.sumMaxCapacityForOrganizer(organizerId);
+        long soldL = sold != null ? sold : 0L;
+        long capL = cap != null ? cap : 0L;
+        int avg = capL > 0 ? (int) Math.min(100, Math.round((soldL * 100.0) / capL)) : 0;
+        return OrganizerEventSummaryDto.builder()
+                .eventCount(count)
+                .ticketsSold(soldL)
+                .totalRevenue(rev != null ? rev : BigDecimal.ZERO)
+                .averageFillPercent(avg)
+                .build();
+    }
+
+    @Override
+    public EventAdminMetricsDto getAdminMetrics() {
+        long total = eventRepository.count();
+        long published = eventRepository.countByStatus(EventStatus.PUBLISHED);
+        long submitted = eventRepository.countByStatus(EventStatus.SUBMITTED);
+        BigDecimal revenue = ticketTypeRepository.sumRevenueFromSoldTickets();
+        Long sold = ticketTypeRepository.sumTicketsSold();
+        return EventAdminMetricsDto.builder()
+                .totalEvents(total)
+                .publishedEvents(published)
+                .submittedEvents(submitted)
+                .platformRevenue(revenue != null ? revenue : BigDecimal.ZERO)
+                .ticketsSold(sold != null ? sold : 0L)
+                .build();
     }
 
     @Override
