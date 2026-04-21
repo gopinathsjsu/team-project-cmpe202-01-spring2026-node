@@ -14,6 +14,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -21,6 +22,7 @@ import java.util.UUID;
 public class RefreshTokenService {
 
     private final RefreshTokenRepository refreshTokenRepository;
+    private final AuditLogService auditLogService;
 
     @Value("${app.jwt.refresh-token-expiration-ms}")
     private long refreshTokenExpirationMs;
@@ -48,19 +50,30 @@ public class RefreshTokenService {
         String rawToken = new String(Base64.getUrlDecoder().decode(encodedToken), StandardCharsets.UTF_8);
         String tokenHash = hashToken(rawToken);
 
-        RefreshToken token = refreshTokenRepository.findByTokenHashAndRevokedFalse(tokenHash)
-                .orElseThrow(() -> new TokenRefreshException("Invalid or revoked refresh token"));
-
-        if (token.getExpiresAt().isBefore(Instant.now())) {
+        var active = refreshTokenRepository.findByTokenHashAndRevokedFalse(tokenHash);
+        if (active.isPresent()) {
+            RefreshToken token = active.get();
+            if (token.getExpiresAt().isBefore(Instant.now())) {
+                token.setRevoked(true);
+                refreshTokenRepository.save(token);
+                throw new TokenRefreshException("Refresh token has expired");
+            }
             token.setRevoked(true);
             refreshTokenRepository.save(token);
-            throw new TokenRefreshException("Refresh token has expired");
+            return token;
         }
 
-        token.setRevoked(true);
-        refreshTokenRepository.save(token);
+        var maybeRevoked = refreshTokenRepository.findByTokenHash(tokenHash);
+        if (maybeRevoked.isPresent() && maybeRevoked.get().isRevoked()) {
+            RefreshToken revoked = maybeRevoked.get();
+            UUID userId = revoked.getUserId();
+            refreshTokenRepository.revokeAllByUserId(userId);
+            auditLogService.log(userId, "REFRESH_TOKEN_REUSE", "REFRESH_TOKEN", revoked.getId().toString(),
+                    Map.of("reason", "rotated token presented again; all sessions revoked"), null);
+            throw new TokenRefreshException("Refresh token reuse detected; all sessions have been logged out");
+        }
 
-        return token;
+        throw new TokenRefreshException("Invalid or revoked refresh token");
     }
 
     @Transactional
