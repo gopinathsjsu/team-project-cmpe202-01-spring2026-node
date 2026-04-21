@@ -88,22 +88,109 @@ function normalizeTicketTypeApi(raw: unknown): TicketTypeApi | null {
 // Use same-origin `/api/v1` in dev so Vite can proxy to event (8080) vs booking (8082).
 // Override with VITE_API_BASE_URL when serving the SPA behind a gateway.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
+const AUTH_STORAGE_KEY = 'user';
+
+type StoredUser = User & {
+  refreshToken?: string;
+};
+
+let refreshPromise: Promise<string> | null = null;
+
+function mapBackendRole(role: unknown): User['role'] {
+  if (role === 'ORGANIZER' || role === 'ADMIN') return role;
+  return 'USER';
+}
+
+function readStoredUser(): StoredUser | null {
+  const userStr = localStorage.getItem(AUTH_STORAGE_KEY);
+  if (!userStr) return null;
+
+  try {
+    return JSON.parse(userStr) as StoredUser;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredUser(user: StoredUser): void {
+  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+}
 
 // Add interceptor to include token
 axios.interceptors.request.use((config) => {
-  const userStr = localStorage.getItem('user');
-  if (userStr) {
-    try {
-      const user = JSON.parse(userStr);
-      if (user?.token) {
-        config.headers.Authorization = `Bearer ${user.token}`;
-      }
-    } catch (e) {
-      // ignore
-    }
+  const requestUrl = config.url ?? '';
+  const isAuthPath =
+    requestUrl.includes('/auth/login') ||
+    requestUrl.includes('/auth/register') ||
+    requestUrl.includes('/auth/refresh');
+
+  if (isAuthPath) {
+    return config;
+  }
+
+  const user = readStoredUser();
+  if (user?.token) {
+    config.headers.Authorization = `Bearer ${user.token}`;
   }
   return config;
 });
+
+axios.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config as { _retry?: boolean; url?: string; headers?: Record<string, string> };
+    const status = error?.response?.status;
+    const requestUrl = originalRequest?.url ?? '';
+
+    const isAuthPath =
+      requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/auth/register') ||
+      requestUrl.includes('/auth/refresh');
+
+    if (status !== 401 || !originalRequest || originalRequest._retry || isAuthPath) {
+      return Promise.reject(error);
+    }
+
+    const storedUser = readStoredUser();
+    const currentRefreshToken = storedUser?.refreshToken;
+    if (!storedUser || !currentRefreshToken) {
+      return Promise.reject(error);
+    }
+
+    originalRequest._retry = true;
+
+    try {
+      if (!refreshPromise) {
+        refreshPromise = axios
+          .post(`${API_BASE_URL}/auth/refresh`, { refreshToken: currentRefreshToken })
+          .then((resp) => {
+            const newAccessToken = resp.data?.accessToken;
+            const newRefreshToken = resp.data?.refreshToken;
+            if (!newAccessToken || !newRefreshToken) {
+              throw new Error('Invalid refresh response');
+            }
+            writeStoredUser({
+              ...storedUser,
+              token: newAccessToken,
+              refreshToken: newRefreshToken,
+            });
+            return newAccessToken as string;
+          })
+          .finally(() => {
+            refreshPromise = null;
+          });
+      }
+
+      const newToken = await refreshPromise;
+      originalRequest.headers = originalRequest.headers ?? {};
+      originalRequest.headers.Authorization = `Bearer ${newToken}`;
+      return axios(originalRequest);
+    } catch (refreshError) {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      return Promise.reject(refreshError);
+    }
+  }
+);
 
 export function runAPI() {
   return {
@@ -111,35 +198,31 @@ export function runAPI() {
     login: async (email: string, password: string): Promise<User> => {
       const response = await axios.post(`${API_BASE_URL}/auth/login`, { email, password });
       const data = response.data;
-      return {
-        id: data.id,
-        name: data.username || data.email,
-        email: data.email,
-        role: data.role,
-        token: data.token
+      const authUser: StoredUser = {
+        id: data.user?.id,
+        name: data.user?.username || data.user?.email || email,
+        email: data.user?.email || email,
+        role: mapBackendRole(data.user?.role),
+        token: data.accessToken,
+        refreshToken: data.refreshToken,
       };
+      writeStoredUser(authUser);
+      return authUser;
     },
 
     register: async (user: any): Promise<User> => {
       const response = await axios.post(`${API_BASE_URL}/auth/register`, user);
-      const data1 = response.data;
-
-      let data = {
-        id: data1?.user.id,
-        name: data1?.user.username || data1?.user.email,
-        username: data1?.user.username,
-        email: data1?.user.email,
-        role: data1?.user.role,
-        token: data1?.accessToken
-      }
-
-      return {
-        id: data.id,
-        name: data?.username || user.name || data.email,
-        email: data.email,
-        role: data.role,
-        token: data.token
+      const data = response.data;
+      const authUser: StoredUser = {
+        id: data.user?.id,
+        name: data.user?.username || user.name || data.user?.email || user.email,
+        email: data.user?.email || user.email,
+        role: mapBackendRole(data.user?.role),
+        token: data.accessToken,
+        refreshToken: data.refreshToken,
       };
+      writeStoredUser(authUser);
+      return authUser;
     },
 
     // Categories
