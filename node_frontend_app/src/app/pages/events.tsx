@@ -4,7 +4,7 @@ import { EventCard } from "../components/EventCard";
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Search, Filter, X } from 'lucide-react';
+import { Search, Filter, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import type { EventCategory, Event } from '../types';
 import { runAPI } from '../api';
@@ -26,6 +26,24 @@ export function AllEvents() {
     const api = runAPI();
 
     const [events, setEvents] = useState<Event[]>([]);
+    const [eventsPage, setEventsPage] = useState(0);
+    const [eventsTotal, setEventsTotal] = useState(0);
+    const [eventsTotalPages, setEventsTotalPages] = useState(0);
+    const [eventsLoading, setEventsLoading] = useState(false);
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+
+    useEffect(() => {
+        const t = window.setTimeout(() => setDebouncedSearch(searchQuery), 400);
+        return () => window.clearTimeout(t);
+    }, [searchQuery]);
+
+    useEffect(() => {
+        setEventsPage(0);
+    }, [debouncedSearch]);
+
+    useEffect(() => {
+        setEventsPage(0);
+    }, [selectedCategories, priceFilter, sortBy]);
 
     useEffect(() => {
         const fetchCategories = async () => {
@@ -33,12 +51,25 @@ export function AllEvents() {
             setCategories(categories);
         };
 
-        api.getActiveEvents().then((data) => {
-            setEvents(Array.isArray(data) ? data : []);
-        }).catch(console.error);
-
         fetchCategories();
     }, []);
+
+    useEffect(() => {
+        setEventsLoading(true);
+        api
+            .getActiveEventsPaged({
+                page: eventsPage,
+                size: 12,
+                q: debouncedSearch.trim() || undefined,
+            })
+            .then((res) => {
+                setEvents(Array.isArray(res.content) ? res.content : []);
+                setEventsTotal(res.totalElements);
+                setEventsTotalPages(res.totalPages);
+            })
+            .catch(console.error)
+            .finally(() => setEventsLoading(false));
+    }, [debouncedSearch, eventsPage]);
 
     const toggleCategory = (categoryName: string) => {
         setselectedCategories(prev => {
@@ -110,7 +141,7 @@ export function AllEvents() {
         filtered = [...filtered].sort((a, b) => {
             switch (sortBy) {
                 case 'date':
-                    return new Date(a.eventStartInstant).getTime() - new Date(b.eventEndInstant).getTime();
+                    return new Date(a.eventStartInstant).getTime() - new Date(b.eventStartInstant).getTime();
                 case 'price-low':
                     return a.ticketPrice - b.ticketPrice;
                 case 'price-high':
@@ -276,13 +307,15 @@ export function AllEvents() {
             </div>
 
             <div className="container mx-auto px-4 py-8">
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
                     <p className="text-gray-600">
-                        {filteredEvents.length} {filteredEvents.length === 1 ? 'event' : 'events'} found
+                        {eventsLoading
+                            ? 'Loading…'
+                            : `${filteredEvents.length} of ${eventsTotal} ${eventsTotal === 1 ? 'event' : 'events'} (page ${eventsPage + 1}${eventsTotalPages > 0 ? ` of ${eventsTotalPages}` : ''})`}
                     </p>
                 </div>
 
-                {filteredEvents.length === 0 ? (
+                {filteredEvents.length === 0 && !eventsLoading ? (
                     <div className="text-center py-16">
                         <Filter className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                         <h3 className="text-xl font-medium mb-2">No events found</h3>
@@ -293,12 +326,45 @@ export function AllEvents() {
                             <Button onClick={handleClearFilters}>Clear Filters</Button>
                         )}
                     </div>
+                ) : eventsLoading ? (
+                    <div className="text-center py-16 text-gray-600">Loading events…</div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredEvents.map(event => (
-                            <EventCard key={event.eventId} event={event} />
-                        ))}
-                    </div>
+                    <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {filteredEvents.map((event) => (
+                                <EventCard key={event.eventId} event={event} />
+                            ))}
+                        </div>
+                        {eventsTotal > 0 && (
+                            <div className="flex items-center justify-between gap-4 pt-8 border-t mt-8">
+                                <p className="text-sm text-gray-600">
+                                    Page {eventsPage + 1} of {Math.max(1, eventsTotalPages)} ({eventsTotal} total)
+                                </p>
+                                <div className="flex gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={eventsLoading || eventsPage <= 0}
+                                        onClick={() => setEventsPage((p) => p - 1)}
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                        Prev
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={eventsLoading || eventsPage >= eventsTotalPages - 1}
+                                        onClick={() => setEventsPage((p) => p + 1)}
+                                    >
+                                        Next
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         </div>

@@ -23,7 +23,7 @@ export default function AppRoutes() {
             <Route
                 path="/dashboard"
                 element={
-                    <ProtectedRoute allowedRoles={['USER', 'ORGANIZER', 'ADMIN']}>
+                    <ProtectedRoute allowedRoles={['ATTENDEE', 'ORGANIZER', 'ADMIN']}>
                         <Dashboard />
                     </ProtectedRoute>
                 }
@@ -31,13 +31,13 @@ export default function AppRoutes() {
             <Route
                 path="/profile"
                 element={
-                    <ProtectedRoute allowedRoles={['USER', 'ORGANIZER', 'ADMIN']}>
+                    <ProtectedRoute allowedRoles={['ATTENDEE', 'ORGANIZER', 'ADMIN']}>
                         <Profile />
                     </ProtectedRoute>
                 }
             />
             <Route
-                path="/create-event"
+                path="/createEvent"
                 element={
                     <ProtectedRoute allowedRoles={['ORGANIZER', 'ADMIN']}>
                         <CreateEvent />
@@ -70,7 +70,7 @@ export default function AppRoutes() {
             />
             <Route path="/events/:id" element={<EventDetail />} />
             <Route path="/booking/:id" element={
-                <ProtectedRoute allowedRoles={['USER', 'ORGANIZER', 'ADMIN']}>
+                <ProtectedRoute allowedRoles={['ATTENDEE', 'ORGANIZER', 'ADMIN']}>
                     <ViewBooking />
                 </ProtectedRoute>
             } />

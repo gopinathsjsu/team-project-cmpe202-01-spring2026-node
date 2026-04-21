@@ -1,6 +1,68 @@
 //  this file will communicate with backend api's using http calls
 import axios from 'axios';
-import type { Event, Booking, User, EventCategory, TicketTypeDraft, TicketTypeApi, UserBooking } from './types';
+import type {
+  AdminUserRow,
+  Booking,
+  BookingAdminMetrics,
+  Event,
+  EventAdminMetrics,
+  EventBookingSummary,
+  EventCategory,
+  OrganizerEventSummary,
+  PageResponse,
+  TicketTypeApi,
+  TicketTypeDraft,
+  User,
+  UserBooking,
+  UserBookingCounts,
+} from './types';
+
+function mapBookingResponseToBooking(d: Record<string, unknown>): Booking {
+  const statusRaw = String(d.status ?? '').toUpperCase();
+  const confirmed =
+    statusRaw === 'CONFIRMED' || statusRaw === 'CHECKED_IN' || statusRaw === 'BOOKED';
+  return {
+    id: String(d.bookingId ?? ''),
+    eventId: String(d.eventId ?? ''),
+    userId: String(d.userId ?? ''),
+    userName: String(d.userName ?? ''),
+    userEmail: String(d.userEmail ?? ''),
+    ticketQuantity: Number(d.quantity ?? 0),
+    totalAmount: Number(d.totalAmount ?? 0),
+    bookingDate: String(d.createdAt ?? ''),
+    status: confirmed ? 'confirmed' : 'cancelled',
+  };
+}
+
+function mapBookingResponseForUserToUserBooking(d: Record<string, unknown>): UserBooking {
+  const loc = (d.eventLocation as Record<string, unknown>) || {};
+  return {
+    bookingId: String(d.bookingId ?? ''),
+    bookingReference: String(d.bookingReference ?? ''),
+    eventId: String(d.eventId ?? ''),
+    userId: String(d.userId ?? ''),
+    userName: String(d.userName ?? ''),
+    userEmail: String(d.userEmail ?? ''),
+    quantity: Number(d.quantity ?? 0),
+    totalAmount: Number(d.totalAmount ?? 0),
+    createdAt: String(d.createdAt ?? ''),
+    eventName: String(d.eventName ?? ''),
+    eventDescription: String(d.eventDescription ?? ''),
+    eventStartInstant: String(d.eventStartInstant ?? ''),
+    eventEndInstant: String(d.eventEndInstant ?? ''),
+    imageUrl: String(d.eventImageUrl ?? ''),
+    status: String(d.status ?? ''),
+    eventOwnerId: String(d.eventOwnerId ?? ''),
+    eventOwnerName: String(d.eventOwnerName ?? ''),
+    eventLocation: {
+      locationName: String(loc.locationName ?? ''),
+      locationAddress: String(loc.locationAddress ?? ''),
+      latitude: loc.latitude != null ? Number(loc.latitude) : null,
+      longitude: loc.longitude != null ? Number(loc.longitude) : null,
+    },
+    eventTimeZone: String(d.eventTimeZone ?? ''),
+  };
+}
 
 function normalizeTicketTypeApi(raw: unknown): TicketTypeApi | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -47,7 +109,7 @@ export function runAPI() {
   return {
     // Auth
     login: async (email: string, password: string): Promise<User> => {
-      const response = await axios.post(`${API_BASE_URL}/auth/authenticate`, { email, password });
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, { email, password });
       const data = response.data;
       return {
         id: data.id,
@@ -60,10 +122,20 @@ export function runAPI() {
 
     register: async (user: any): Promise<User> => {
       const response = await axios.post(`${API_BASE_URL}/auth/register`, user);
-      const data = response.data;
+      const data1 = response.data;
+
+      let data = {
+        id: data1?.user.id,
+        name: data1?.user.username || data1?.user.email,
+        username: data1?.user.username,
+        email: data1?.user.email,
+        role: data1?.user.role,
+        token: data1?.accessToken
+      }
+
       return {
         id: data.id,
-        name: data.username || user.name || data.email,
+        name: data?.username || user.name || data.email,
         email: data.email,
         role: data.role,
         token: data.token
@@ -72,22 +144,22 @@ export function runAPI() {
 
     // Categories
     getCategories: async (): Promise<EventCategory[]> => {
-      const response = await axios.get(`${API_BASE_URL}/event/categories`);
+      const response = await axios.get(`${API_BASE_URL}/events/categories`);
       return response.data;
     },
 
     addCategory: async (category: EventCategory): Promise<EventCategory> => {
-      const response = await axios.post(`${API_BASE_URL}/event/categories`, category);
+      const response = await axios.post(`${API_BASE_URL}/events/categories`, category);
       return response.data;
     },
 
     updateCategory: async (id: string, category: EventCategory): Promise<EventCategory> => {
-      const response = await axios.put(`${API_BASE_URL}/event/categories/${id}`, category);
+      const response = await axios.put(`${API_BASE_URL}/events/categories/${id}`, category);
       return response.data;
     },
 
     deleteCategory: async (id: string): Promise<void> => {
-      await axios.delete(`${API_BASE_URL}/event/categories/${id}`);
+      await axios.delete(`${API_BASE_URL}/events/categories/${id}`);
     },
 
     // Events
@@ -95,8 +167,41 @@ export function runAPI() {
       const response = await axios.get(`${API_BASE_URL}/events`);
       return response.data;
     },
+
+    getEventAdminMetrics: async (): Promise<EventAdminMetrics> => {
+      const response = await axios.get(`${API_BASE_URL}/events/admin/metrics`);
+      return response.data;
+    },
+
+    getAdminEventsPaged: async (params: {
+      page?: number;
+      size?: number;
+      status?: string | null;
+      q?: string;
+    }): Promise<PageResponse<Event>> => {
+      const sp = new URLSearchParams();
+      sp.set('page', String(params.page ?? 0));
+      sp.set('size', String(params.size ?? 10));
+      if (params.status) sp.set('status', params.status);
+      if (params.q?.trim()) sp.set('q', params.q.trim());
+      const response = await axios.get(`${API_BASE_URL}/events/admin/paged?${sp.toString()}`);
+      return response.data;
+    },
     getActiveEvents: async (): Promise<Event[]> => {
       const response = await axios.get(`${API_BASE_URL}/events/activeEvents`);
+      return response.data;
+    },
+
+    getActiveEventsPaged: async (params: {
+      page?: number;
+      size?: number;
+      q?: string;
+    }): Promise<PageResponse<Event>> => {
+      const sp = new URLSearchParams();
+      sp.set('page', String(params.page ?? 0));
+      sp.set('size', String(params.size ?? 12));
+      if (params.q?.trim()) sp.set('q', params.q.trim());
+      const response = await axios.get(`${API_BASE_URL}/events/activeEvents/paged?${sp.toString()}`);
       return response.data;
     },
     getEventById: async (id: string): Promise<Event> => {
@@ -138,6 +243,29 @@ export function runAPI() {
       const response = await axios.get(`${API_BASE_URL}/events/organizer/${ownerId}/status/${status}`);
       return response.data;
     },
+
+    getOrganizerSummary: async (organizerId: string): Promise<OrganizerEventSummary> => {
+      const response = await axios.get(
+        `${API_BASE_URL}/events/organizer/${encodeURIComponent(organizerId)}/summary`
+      );
+      return response.data;
+    },
+
+    getOrganizerEventsPaged: async (params: {
+      organizerId: string;
+      tab?: string;
+      page?: number;
+      size?: number;
+    }): Promise<PageResponse<Event>> => {
+      const sp = new URLSearchParams();
+      sp.set('page', String(params.page ?? 0));
+      sp.set('size', String(params.size ?? 8));
+      sp.set('tab', params.tab ?? 'all');
+      const response = await axios.get(
+        `${API_BASE_URL}/events/organizer/${encodeURIComponent(params.organizerId)}/events/paged?${sp.toString()}`
+      );
+      return response.data;
+    },
     // Event Approvals
     getPendingEvents: async (): Promise<Event[]> => {
       const response = await axios.get(`${API_BASE_URL}/events/pending`);
@@ -160,10 +288,36 @@ export function runAPI() {
         status: d.status === 'BOOKED' ? 'confirmed' : 'cancelled',
       }));
     },
-     getEventBookings: async (eventId: string): Promise<Booking[]> => {
+    getEventBookings: async (eventId: string): Promise<Booking[]> => {
       const response = await axios.get(`${API_BASE_URL}/bookings/event/${eventId}`);
       const list = Array.isArray(response.data) ? response.data : [];
       return list;
+    },
+
+    getEventBookingsPaged: async (params: {
+      eventId: string;
+      page?: number;
+      size?: number;
+    }): Promise<PageResponse<Booking>> => {
+      const sp = new URLSearchParams();
+      sp.set('page', String(params.page ?? 0));
+      sp.set('size', String(params.size ?? 10));
+      const response = await axios.get(
+        `${API_BASE_URL}/bookings/event/${encodeURIComponent(params.eventId)}/paged?${sp.toString()}`
+      );
+      const data = response.data;
+      const rawContent = Array.isArray(data.content) ? data.content : [];
+      return {
+        ...data,
+        content: rawContent.map((row: Record<string, unknown>) => mapBookingResponseToBooking(row)),
+      };
+    },
+
+    getEventBookingSummary: async (eventId: string): Promise<EventBookingSummary> => {
+      const response = await axios.get(
+        `${API_BASE_URL}/bookings/event/${encodeURIComponent(eventId)}/summary`
+      );
+      return response.data;
     },
     addBooking: async (booking: Booking, ticketTypeName?: string): Promise<Booking> => {
       const response = await axios.post(`${API_BASE_URL}/bookings`, {
@@ -191,6 +345,22 @@ export function runAPI() {
       const response = await axios.get(`${API_BASE_URL}/bookings/allBookings`);
       const list = Array.isArray(response.data) ? response.data : [];
       return list;
+    },
+
+    getBookingAdminMetrics: async (): Promise<BookingAdminMetrics> => {
+      const response = await axios.get(`${API_BASE_URL}/bookings/admin/metrics`);
+      return response.data;
+    },
+
+    getAdminBookingsPaged: async (params: {
+      page?: number;
+      size?: number;
+    }): Promise<PageResponse<Record<string, unknown>>> => {
+      const sp = new URLSearchParams();
+      sp.set('page', String(params.page ?? 0));
+      sp.set('size', String(params.size ?? 10));
+      const response = await axios.get(`${API_BASE_URL}/bookings/admin/paged?${sp.toString()}`);
+      return response.data;
     },
     getBookingById: async (id: string): Promise<Booking | null> => {
       try {
@@ -234,6 +404,30 @@ export function runAPI() {
       return list;
     },
 
+    getUserBookingCounts: async (userId: string): Promise<UserBookingCounts> => {
+      const response = await axios.get(`${API_BASE_URL}/bookings/user/${encodeURIComponent(userId)}/counts`);
+      return response.data;
+    },
+
+    getUserBookingsPaged: async (params: {
+      userId: string;
+      page?: number;
+      size?: number;
+    }): Promise<PageResponse<UserBooking>> => {
+      const sp = new URLSearchParams();
+      sp.set('page', String(params.page ?? 0));
+      sp.set('size', String(params.size ?? 10));
+      const response = await axios.get(
+        `${API_BASE_URL}/bookings/user/${encodeURIComponent(params.userId)}/paged?${sp.toString()}`
+      );
+      const data = response.data;
+      const rawContent = Array.isArray(data.content) ? data.content : [];
+      return {
+        ...data,
+        content: rawContent.map((row: Record<string, unknown>) => mapBookingResponseForUserToUserBooking(row)),
+      };
+    },
+
     getEventsBookedByUserId: async (userId: string): Promise<Event[]> => {
       const response = await axios.get(`${API_BASE_URL}/bookings/user/${userId}/events`);
       return response.data;
@@ -243,10 +437,46 @@ export function runAPI() {
       await axios.put(`${API_BASE_URL}/bookings/${userId}/${eventId}/cancel`);
     },
 
-    // Users
+    // Users (admin list uses identity `/admin/users`; legacy path kept for callers)
+    getAdminUsersPaged: async (params: {
+      page?: number;
+      size?: number;
+      role?: string;
+      q?: string;
+    }): Promise<PageResponse<AdminUserRow>> => {
+      const sp = new URLSearchParams();
+      sp.set('page', String(params.page ?? 0));
+      sp.set('size', String(params.size ?? 10));
+      if (params.role) sp.set('role', params.role);
+      if (params.q?.trim()) sp.set('q', params.q.trim());
+      const response = await axios.get(`${API_BASE_URL}/admin/users?${sp.toString()}`);
+      const data = response.data;
+      const rawContent = Array.isArray(data.content) ? data.content : [];
+      const content: AdminUserRow[] = rawContent.map((row: { id?: string; email?: string; role?: AdminUserRow['role'] }) => ({
+        id: row.id != null ? String(row.id) : '',
+        email: row.email ?? '',
+        role: (row.role ?? 'ATTENDEE') as AdminUserRow['role'],
+      }));
+      return {
+        ...data,
+        content,
+      };
+    },
+
     getUsers: async (): Promise<User[]> => {
-      const response = await axios.get(`${API_BASE_URL}/users`);
-      return response.data;
+      const sp = new URLSearchParams();
+      sp.set('page', '0');
+      sp.set('size', '500');
+      const response = await axios.get(`${API_BASE_URL}/admin/users?${sp.toString()}`);
+      const data = response.data;
+      const rawContent = Array.isArray(data.content) ? data.content : [];
+      return rawContent.map((row: { id?: string; email?: string; role?: User['role'] }) => ({
+        id: row.id != null ? String(row.id) : '',
+        name: row.email ?? '',
+        email: row.email ?? '',
+        role: (row.role ?? 'ATTENDEE') as User['role'],
+        token: '',
+      }));
     },
     getUserById: async (id: string): Promise<User> => {
       const response = await axios.get(`${API_BASE_URL}/users/${id}`);

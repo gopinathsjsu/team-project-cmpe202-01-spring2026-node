@@ -13,11 +13,13 @@ import {
     XCircle,
     Mail,
     Ticket,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { runAPI } from '../api';
-import type { Booking } from '../types';
+import type { Booking, EventBookingSummary } from '../types';
 
 export function AttendeesPage() {
     const { id } = useParams<{ id: string }>();
@@ -26,21 +28,46 @@ export function AttendeesPage() {
 
     const [event, setEvent] = useState<any>(null);
     const [bookings, setBookings] = useState<Booking[]>([]);
+    const [bookingSummary, setBookingSummary] = useState<EventBookingSummary | null>(null);
+    const [bookingsPage, setBookingsPage] = useState(0);
+    const [bookingsTotal, setBookingsTotal] = useState(0);
+    const [bookingsTotalPages, setBookingsTotalPages] = useState(0);
+    const [bookingsLoading, setBookingsLoading] = useState(false);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
+        setBookingsPage(0);
+    }, [id]);
+
+    useEffect(() => {
         if (!id) return;
         setLoading(true);
-        Promise.all([
-            api.getEventById(id).catch(() => null),
-            api.getEventBookings(id).catch(() => []),
-        ]).then(([eventData, bookingData]) => {
-            setEvent(eventData);
-            setBookings(Array.isArray(bookingData) ? bookingData : []);
-            setLoading(false);
-        });
+        api
+            .getEventById(id)
+            .then((eventData) => {
+                setEvent(eventData);
+                setLoading(false);
+            })
+            .catch(() => setLoading(false));
     }, [id]);
+
+    useEffect(() => {
+        if (!id) return;
+        setBookingsLoading(true);
+        Promise.all([
+            api.getEventBookingSummary(id).catch(() => null),
+            api.getEventBookingsPaged({ eventId: id, page: bookingsPage, size: 10 }),
+        ])
+            .then(([summaryData, paged]) => {
+                setBookingSummary(summaryData);
+                setBookings(Array.isArray(paged.content) ? paged.content : []);
+                setBookingsTotal(paged.totalElements);
+                setBookingsTotalPages(paged.totalPages);
+            })
+            .catch(console.error)
+            .finally(() => setBookingsLoading(false));
+    }, [id, bookingsPage]);
 
     if (loading) {
         return (
@@ -62,10 +89,15 @@ export function AttendeesPage() {
         );
     }
 
-    const confirmed = bookings.filter(b => b.status === 'confirmed');
-    const cancelled = bookings.filter(b => b.status === 'cancelled');
-    const totalTickets = confirmed.reduce((sum, b) => sum + b.ticketQuantity, 0);
-    const totalRevenue = confirmed.reduce((sum, b) => sum + b.totalAmount, 0);
+    const confirmed = bookings.filter((b) => b.status === 'confirmed');
+    const cancelled = bookings.filter((b) => b.status === 'cancelled');
+    const totalTickets =
+        bookingSummary?.confirmedTicketQuantity ??
+        confirmed.reduce((sum, b) => sum + b.ticketQuantity, 0);
+    const totalRevenue =
+        bookingSummary != null
+            ? Number(bookingSummary.confirmedRevenue)
+            : confirmed.reduce((sum, b) => sum + b.totalAmount, 0);
 
     const filtered = confirmed.filter(b =>
         b.userName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -76,31 +108,58 @@ export function AttendeesPage() {
         try {
             await api.cancelBooking(bookingId);
             toast.success('Booking cancelled');
-            setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: 'cancelled' } : b));
+            if (!id) return;
+            const [summaryData, paged] = await Promise.all([
+                api.getEventBookingSummary(id).catch(() => null),
+                api.getEventBookingsPaged({ eventId: id, page: bookingsPage, size: 10 }),
+            ]);
+            setBookingSummary(summaryData);
+            setBookings(Array.isArray(paged.content) ? paged.content : []);
+            setBookingsTotal(paged.totalElements);
+            setBookingsTotalPages(paged.totalPages);
         } catch {
             toast.error('Failed to cancel booking');
         }
     };
 
-    const handleExportCSV = () => {
-        const headers = ['Name', 'Email', 'Tickets', 'Amount', 'Date', 'Status'];
-        const rows = confirmed.map(b => [
-            b.userName,
-            b.userEmail,
-            b.ticketQuantity,
-            `$${b.totalAmount.toFixed(2)}`,
-            b.bookingDate ? format(new Date(b.bookingDate), 'yyyy-MM-dd') : '',
-            b.status,
-        ]);
-        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `attendees-${event.eventName?.replace(/\s/g, '_')}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast.success('CSV exported!');
+    const handleExportCSV = async () => {
+        if (!id) return;
+        setBookingsLoading(true);
+        try {
+            const pageSize = 100;
+            let page = 0;
+            let all: Booking[] = [];
+            let totalPages = 1;
+            while (page < totalPages) {
+                const res = await api.getEventBookingsPaged({ eventId: id, page, size: pageSize });
+                all = [...all, ...res.content];
+                totalPages = res.totalPages;
+                page++;
+            }
+            const rows = all.filter((b) => b.status === 'confirmed');
+            const headers = ['Name', 'Email', 'Tickets', 'Amount', 'Date', 'Status'];
+            const csvRows = rows.map((b) => [
+                b.userName,
+                b.userEmail,
+                b.ticketQuantity,
+                `$${b.totalAmount.toFixed(2)}`,
+                b.bookingDate ? format(new Date(b.bookingDate), 'yyyy-MM-dd') : '',
+                b.status,
+            ]);
+            const csv = [headers.join(','), ...csvRows.map((r) => r.join(','))].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `attendees-${event.eventName?.replace(/\s/g, '_')}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast.success('CSV exported!');
+        } catch {
+            toast.error('Export failed');
+        } finally {
+            setBookingsLoading(false);
+        }
     };
 
     return (
@@ -124,7 +183,9 @@ export function AttendeesPage() {
                             <Users className="h-4 w-4 text-gray-500" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{confirmed.length}</div>
+                            <div className="text-2xl font-bold">
+                                {bookingSummary?.confirmedBookingCount ?? confirmed.length}
+                            </div>
                         </CardContent>
                     </Card>
                     <Card>
@@ -151,7 +212,9 @@ export function AttendeesPage() {
                             <XCircle className="h-4 w-4 text-gray-500" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{cancelled.length}</div>
+                            <div className="text-2xl font-bold">
+                                {bookingSummary?.cancelledBookingCount ?? cancelled.length}
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
@@ -162,7 +225,11 @@ export function AttendeesPage() {
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                             <div>
                                 <CardTitle>Attendees</CardTitle>
-                                <CardDescription>{confirmed.length} confirmed registrations</CardDescription>
+                                <CardDescription>
+                                    {bookingSummary?.confirmedBookingCount ?? confirmed.length} confirmed
+                                    registrations
+                                    {bookingsTotal > 0 ? ` · ${bookingsTotal} total booking rows` : ''}
+                                </CardDescription>
                             </div>
                             <Button variant="outline" size="sm" onClick={handleExportCSV}>
                                 <Download className="h-4 w-4 mr-2" />
@@ -247,6 +314,36 @@ export function AttendeesPage() {
                                         ))}
                                     </tbody>
                                 </table>
+                            </div>
+                        )}
+                        {bookingsTotal > 0 && (
+                            <div className="flex items-center justify-between gap-4 pt-8 border-t mt-8">
+                                <p className="text-sm text-gray-600">
+                                    Page {bookingsPage + 1} of {Math.max(1, bookingsTotalPages)} ({bookingsTotal}{' '}
+                                    total)
+                                </p>
+                                <div className="flex gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={bookingsLoading || bookingsPage <= 0}
+                                        onClick={() => setBookingsPage((p) => p - 1)}
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                        Prev
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={bookingsLoading || bookingsPage >= bookingsTotalPages - 1}
+                                        onClick={() => setBookingsPage((p) => p + 1)}
+                                    >
+                                        Next
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
                         )}
                     </CardContent>

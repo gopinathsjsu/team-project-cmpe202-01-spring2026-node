@@ -231,7 +231,7 @@ export function EventDetail() {
                                 )}
                             </div>
 
-                            {isBookable && currentUser?.role === 'USER' && availableTickets > 0 ? (
+                            {isBookable && currentUser?.role === 'ATTENDEE' && availableTickets > 0 ? (
                                 <>
                                     {isAlreadyBookedByUser ? (<Button className="w-full" size="lg" onClick={() => cancelBookingByUserIdAndEventId(currentUser.id, event.eventId)}>
                                         Cancel Booking</Button>)
