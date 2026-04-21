@@ -13,6 +13,7 @@ export default defineConfig({
     strictPort: true,
     // Route API calls to the right microservice (see node_backend_app/docker-compose.yaml ports).
     proxy: {
+      '/api/v1/auth': { target: 'http://localhost:8081', changeOrigin: true },
       '/api/v1/bookings': { target: 'http://localhost:8082', changeOrigin: true },
       '/api/v1/ticket-types': { target: 'http://localhost:8082', changeOrigin: true },
       '/api/v1': { target: 'http://localhost:8080', changeOrigin: true },
