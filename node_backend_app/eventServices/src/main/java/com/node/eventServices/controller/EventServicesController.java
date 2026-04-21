@@ -1,13 +1,20 @@
 package com.node.eventServices.controller;
 
 import com.node.eventServices.dto.CreateEventRequest;
+import com.node.eventServices.dto.EventAdminMetricsDto;
 import com.node.eventServices.dto.EventInfoDto;
+import com.node.eventServices.dto.OrganizerEventSummaryDto;
 import com.node.eventServices.dto.TicketTypeItemRequest;
 import com.node.eventServices.dto.TicketTypeResponse;
+import com.node.eventServices.model.events.EventStatus;
 import com.node.eventServices.model.events.Events;
 import com.node.eventServices.service.EventManagementService;
 import com.node.eventServices.utils.MapperUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -52,10 +59,38 @@ public class EventServicesController {
         return ResponseEntity.ok(eventManagementService.getAllEvents());
     }
 
+    @GetMapping("/admin/metrics")
+    public ResponseEntity<EventAdminMetricsDto> getAdminMetrics() {
+        log.debug("GET /api/v1/events/admin/metrics");
+        return ResponseEntity.ok(eventManagementService.getAdminMetrics());
+    }
+
+    @GetMapping("/admin/paged")
+    public ResponseEntity<Page<EventInfoDto>> getAdminEventsPaged(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        log.debug("GET /api/v1/events/admin/paged — status={}, q={}, page={}, size={}", status, q, page, size);
+        EventStatus st = (status == null || status.isBlank()) ? null : EventStatus.fromString(status);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "eventStartInstant"));
+        return ResponseEntity.ok(eventManagementService.getAdminEventsPage(st, q, pageable));
+    }
+
     @GetMapping("/activeEvents")
     public ResponseEntity<List<EventInfoDto>> getAllActiveEvents() {
         log.debug("GET /api/v1/events/activeEvents");
         return ResponseEntity.ok(eventManagementService.getAllActiveEvents());
+    }
+
+    @GetMapping("/activeEvents/paged")
+    public ResponseEntity<Page<EventInfoDto>> getActiveEventsPaged(
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size) {
+        log.debug("GET /api/v1/events/activeEvents/paged — q={}, page={}, size={}", q, page, size);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "eventStartInstant"));
+        return ResponseEntity.ok(eventManagementService.getActiveEventsPage(q, pageable));
     }
 
     @GetMapping("/filter")
@@ -132,6 +167,23 @@ public class EventServicesController {
     public ResponseEntity<List<EventInfoDto>> getEventsByOrganizer(@PathVariable String organizerId) {
         log.debug("GET /api/v1/events/organizer/{}", organizerId);
         return ResponseEntity.ok(eventManagementService.getEventsByOrganizer(organizerId));
+    }
+
+    @GetMapping("/organizer/{organizerId}/summary")
+    public ResponseEntity<OrganizerEventSummaryDto> getOrganizerSummary(@PathVariable String organizerId) {
+        log.debug("GET /api/v1/events/organizer/{}/summary", organizerId);
+        return ResponseEntity.ok(eventManagementService.getOrganizerSummary(organizerId));
+    }
+
+    @GetMapping("/organizer/{organizerId}/events/paged")
+    public ResponseEntity<Page<EventInfoDto>> getOrganizerEventsPaged(
+            @PathVariable String organizerId,
+            @RequestParam(defaultValue = "all") String tab,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "8") int size) {
+        log.debug("GET /api/v1/events/organizer/{}/events/paged — tab={}, page={}, size={}", organizerId, tab, page, size);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "eventStartInstant"));
+        return ResponseEntity.ok(eventManagementService.getOrganizerEventsPage(organizerId, tab, pageable));
     }
 
     @GetMapping("/search")
