@@ -1,17 +1,36 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { Camera, Mail, User as UserIcon, Phone, MapPin, Calendar, Save } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Mail, User as UserIcon, Phone, MapPin, Calendar, Save } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router';
+import type { Profile as ProfileType } from '../types';
+
+function getApiErrorMessage(err: unknown, fallback: string): string {
+    if (
+        typeof err === 'object' &&
+        err !== null &&
+        'response' in err &&
+        typeof (err as { response?: { data?: { message?: string }; status?: number } }).response?.data?.message === 'string'
+    ) {
+        const response = (err as { response?: { data?: { message?: string }; status?: number } }).response;
+        if (response?.status === 401) {
+            return 'Session expired. Please sign in again.';
+        }
+        return response?.data?.message ?? fallback;
+    }
+    return err instanceof Error ? err.message : fallback;
+}
 
 export function Profile() {
-    const { currentUser } = useAuth();
+    const { currentUser, setCurrentUser } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
+<<<<<<< HEAD
     const [formData, setFormData] = useState({
         name: currentUser?.name,
         email: currentUser?.email,
@@ -21,22 +40,137 @@ export function Profile() {
         website: 'https://johndoe.com',
     });
 
+=======
+    const api = runAPI();
+>>>>>>> b896717 (Updated Admin actions)
     const navigate = useNavigate();
+    const [loading, setLoading] = useState(true);
+    const [locationSuggestions, setLocationSuggestions] = useState<string[]>([]);
+    const [loadingLocationSuggestions, setLoadingLocationSuggestions] = useState(false);
+    const [profile, setProfile] = useState<ProfileType | null>(null);
+    const [formData, setFormData] = useState({
+        username: '',
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        location: '',
+        bio: '',
+        avatarUrl: '',
+        timezone: 'UTC',
+    });
 
-    const handleSave = () => {
-        // TODO: Connect to backend API
-        /*api.updateUserProfile(formData)
-            .then(() => {
-                toast.success('Profile updated successfully!');
-                setIsEditing(false);
+    useEffect(() => {
+        api.getMyProfile()
+            .then((data) => {
+                setProfile(data);
+                setFormData({
+                    username: data.username ?? '',
+                    firstName: data.firstName ?? '',
+                    lastName: data.lastName ?? '',
+                    email: data.email ?? '',
+                    phone: data.phone ?? '',
+                    location: data.location ?? '',
+                    bio: data.bio ?? '',
+                    avatarUrl: data.avatarUrl ?? '',
+                    timezone: data.timezone ?? 'UTC',
+                });
             })
-            .catch(() => {
-                toast.error('Failed to update profile. Please try again.');
-            });
-            */
-         toast.success('Profile updated successfully!');
+            .catch((err: unknown) => toast.error(getApiErrorMessage(err, 'Failed to load profile')))
+            .finally(() => setLoading(false));
+    }, []);
+
+    useEffect(() => {
+        const query = formData.location.trim();
+        if (!isEditing || query.length < 3) {
+            setLocationSuggestions([]);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            setLoadingLocationSuggestions(true);
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`
+                );
+                const data = await response.json();
+                const suggestions = Array.isArray(data)
+                    ? data
+                          .map((item: { display_name?: string }) => item.display_name)
+                          .filter((name: unknown): name is string => typeof name === 'string' && name.length > 0)
+                    : [];
+                setLocationSuggestions(suggestions);
+            } catch {
+                setLocationSuggestions([]);
+            } finally {
+                setLoadingLocationSuggestions(false);
+            }
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [formData.location, isEditing]);
+
+    const displayName = useMemo(() => {
+        const fullName = `${formData.firstName} ${formData.lastName}`.trim();
+        if (fullName) return fullName;
+        if (formData.username) return formData.username;
+        return currentUser?.name ?? 'User';
+    }, [formData.firstName, formData.lastName, formData.username, currentUser?.name]);
+
+    const refreshFormFromProfile = (data: ProfileType) => {
+        setFormData({
+            username: data.username ?? '',
+            firstName: data.firstName ?? '',
+            lastName: data.lastName ?? '',
+            email: data.email ?? '',
+            phone: data.phone ?? '',
+            location: data.location ?? '',
+            bio: data.bio ?? '',
+            avatarUrl: data.avatarUrl ?? '',
+            timezone: data.timezone ?? 'UTC',
+        });
     };
 
+    const handleSave = () => {
+        api.updateMyProfile({
+            username: formData.username.trim() || undefined,
+            firstName: formData.firstName.trim() || undefined,
+            lastName: formData.lastName.trim() || undefined,
+            phone: formData.phone.trim() || undefined,
+            location: formData.location.trim() || undefined,
+            bio: formData.bio.trim() || undefined,
+            avatarUrl: formData.avatarUrl.trim() || undefined,
+            timezone: formData.timezone.trim() || undefined,
+        })
+            .then((updated) => {
+                setProfile(updated);
+                refreshFormFromProfile(updated);
+                setCurrentUser(currentUser ? {
+                    ...currentUser,
+                    name: `${updated.firstName ?? ''} ${updated.lastName ?? ''}`.trim() || updated.username || updated.email,
+                    username: updated.username,
+                    firstName: updated.firstName,
+                    lastName: updated.lastName,
+                    avatarUrl: updated.avatarUrl,
+                    avatar: updated.avatarUrl,
+                } : currentUser);
+                toast.success('Profile updated successfully');
+                setIsEditing(false);
+            })
+            .catch((err: unknown) => {
+                const message = getApiErrorMessage(err, 'Failed to update profile');
+                toast.error(message);
+            });
+    };
+
+<<<<<<< HEAD
+=======
+    const handleCancel = () => {
+        if (profile) refreshFormFromProfile(profile);
+        setIsEditing(false);
+    };
+
+>>>>>>> b896717 (Updated Admin actions)
     const handleChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
@@ -46,6 +180,46 @@ export function Profile() {
         navigate('/dashboard');
     };
 
+<<<<<<< HEAD
+=======
+    const handleUseCurrentLocation = () => {
+        if (!navigator.geolocation) {
+            toast.error('Geolocation is not supported by your browser');
+            return;
+        }
+
+        toast.loading('Fetching current location...', { id: 'profile-location-toast' });
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const { latitude, longitude } = position.coords;
+                try {
+                    const response = await fetch(
+                        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
+                    );
+                    const data = await response.json();
+                    const resolvedLocation =
+                        typeof data?.display_name === 'string'
+                            ? data.display_name
+                            : `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+                    handleChange('location', resolvedLocation);
+                    setLocationSuggestions([]);
+                    toast.success('Current location added', { id: 'profile-location-toast' });
+                } catch {
+                    handleChange('location', `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+                    toast.success('Coordinates added as location', { id: 'profile-location-toast' });
+                }
+            },
+            () => {
+                toast.error('Unable to retrieve your location', { id: 'profile-location-toast' });
+            }
+        );
+    };
+
+    if (loading) {
+        return <div className="container mx-auto px-4 py-8">Loading profile...</div>;
+    }
+
+>>>>>>> b896717 (Updated Admin actions)
     return (
         <div className="min-h-screen bg-gray-50 py-8">
             <div className="container mx-auto px-4 max-w-4xl">
@@ -56,37 +230,42 @@ export function Profile() {
                         <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 -mt-16">
                             <div className="relative">
                                 <div className="w-32 h-32 rounded-full bg-white p-2 shadow-lg">
-                                    <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center text-white text-4xl font-bold">
-                                        {currentUser?.name.charAt(0)}
-                                    </div>
+                                    {formData.avatarUrl ? (
+                                        <img src={formData.avatarUrl} alt={displayName} className="w-full h-full rounded-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center text-white text-4xl font-bold">
+                                            {displayName.charAt(0).toUpperCase()}
+                                        </div>
+                                    )}
                                 </div>
-                                <button className="absolute bottom-2 right-2 bg-white rounded-full p-2 shadow-md hover:bg-gray-50">
-                                    <Camera className="h-4 w-4" />
-                                </button>
                             </div>
 
                             <div className="flex-1">
-                                <h1 className="text-2xl font-bold">{currentUser?.name}</h1>
+                                <h1 className="text-2xl font-bold">{displayName}</h1>
                                 <p className="text-gray-600 capitalize">{currentUser?.role}</p>
                                 <p className="text-sm text-gray-500 mt-1">
-                                    //Todo: Replace with actual member since date from backend
-                                    Member since {format(new Date(), 'MMMM yyyy')}
+                                    Member since {format(new Date(String(profile?.createdAt || new Date())), 'MMMM yyyy')}
                                 </p>
                             </div>
 
-                            <Button
-                                variant={isEditing ? 'outline' : 'default'}
-                                onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-                            >
-                                {isEditing ? (
-                                    <>
-                                        <Save className="h-4 w-4 mr-2" />
-                                        Save Changes
-                                    </>
-                                ) : (
-                                    'Edit Profile'
+                            <div className="flex gap-2">
+                                {isEditing && (
+                                    <Button variant="outline" onClick={handleCancel}>Cancel</Button>
                                 )}
-                            </Button>
+                                <Button
+                                    variant={isEditing ? 'default' : 'default'}
+                                    onClick={() => isEditing ? handleSave() : setIsEditing(true)}
+                                >
+                                    {isEditing ? (
+                                        <>
+                                            <Save className="h-4 w-4 mr-2" />
+                                            Save Changes
+                                        </>
+                                    ) : (
+                                        'Edit Profile'
+                                    )}
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -101,19 +280,41 @@ export function Profile() {
                             <div className="space-y-4">
                                 <div className="grid sm:grid-cols-2 gap-4">
                                     <div>
-                                        <Label htmlFor="name">Full Name</Label>
+                                        <Label htmlFor="firstName">First Name</Label>
                                         <div className="relative mt-1">
                                             <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                                             <Input
-                                                id="name"
-                                                value={formData.name}
-                                                onChange={(e) => handleChange('name', e.target.value)}
+                                                id="firstName"
+                                                value={formData.firstName}
+                                                onChange={(e) => handleChange('firstName', e.target.value)}
                                                 disabled={!isEditing}
                                                 className="pl-10"
                                             />
                                         </div>
                                     </div>
+                                    <div>
+                                        <Label htmlFor="lastName">Last Name</Label>
+                                        <Input
+                                            id="lastName"
+                                            value={formData.lastName}
+                                            onChange={(e) => handleChange('lastName', e.target.value)}
+                                            disabled={!isEditing}
+                                            className="mt-1"
+                                        />
+                                    </div>
+                                </div>
 
+                                <div className="grid sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <Label htmlFor="username">Username</Label>
+                                        <Input
+                                            id="username"
+                                            value={formData.username}
+                                            onChange={(e) => handleChange('username', e.target.value)}
+                                            disabled={!isEditing}
+                                            className="mt-1"
+                                        />
+                                    </div>
                                     <div>
                                         <Label htmlFor="email">Email Address</Label>
                                         <div className="relative mt-1">
@@ -122,8 +323,7 @@ export function Profile() {
                                                 id="email"
                                                 type="email"
                                                 value={formData.email}
-                                                onChange={(e) => handleChange('email', e.target.value)}
-                                                disabled={!isEditing}
+                                                disabled
                                                 className="pl-10"
                                             />
                                         </div>
@@ -157,16 +357,46 @@ export function Profile() {
                                                 className="pl-10"
                                             />
                                         </div>
+                                        {isEditing && (
+                                            <div className="mt-2">
+                                                <button
+                                                    type="button"
+                                                    className="text-xs text-blue-600 hover:underline mb-2"
+                                                    onClick={handleUseCurrentLocation}
+                                                >
+                                                    Use current location
+                                                </button>
+                                                {loadingLocationSuggestions && (
+                                                    <p className="text-xs text-gray-500">Loading suggestions...</p>
+                                                )}
+                                                {!loadingLocationSuggestions && locationSuggestions.length > 0 && (
+                                                    <div className="border rounded-md bg-white max-h-40 overflow-auto">
+                                                        {locationSuggestions.map((suggestion) => (
+                                                            <button
+                                                                key={suggestion}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    handleChange('location', suggestion);
+                                                                    setLocationSuggestions([]);
+                                                                }}
+                                                                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                                                            >
+                                                                {suggestion}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
                                 <div>
-                                    <Label htmlFor="website">Website</Label>
+                                    <Label htmlFor="avatarUrl">Avatar URL</Label>
                                     <Input
-                                        id="website"
-                                        type="url"
-                                        value={formData.website}
-                                        onChange={(e) => handleChange('website', e.target.value)}
+                                        id="avatarUrl"
+                                        value={formData.avatarUrl}
+                                        onChange={(e) => handleChange('avatarUrl', e.target.value)}
                                         disabled={!isEditing}
                                         className="mt-1"
                                     />
@@ -182,6 +412,33 @@ export function Profile() {
                                         rows={4}
                                         className="mt-1"
                                     />
+                                </div>
+                                <div>
+                                    <Label htmlFor="timezone">Timezone</Label>
+                                    {isEditing ? (
+                                        <Select
+                                            value={formData.timezone}
+                                            onValueChange={(value) => handleChange('timezone', value)}
+                                        >
+                                            <SelectTrigger id="timezone" className="mt-1">
+                                                <SelectValue placeholder="Select timezone" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="America/Los_Angeles">Pacific Time (PT) - Los Angeles</SelectItem>
+                                                <SelectItem value="America/Denver">Mountain Time (MT) - Denver</SelectItem>
+                                                <SelectItem value="America/Chicago">Central Time (CT) - Chicago</SelectItem>
+                                                <SelectItem value="America/New_York">Eastern Time (ET) - New York</SelectItem>
+                                                <SelectItem value="UTC">UTC</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    ) : (
+                                        <Input
+                                            id="timezone"
+                                            value={formData.timezone}
+                                            disabled
+                                            className="mt-1"
+                                        />
+                                    )}
                                 </div>
                             </div>
                         </div>
