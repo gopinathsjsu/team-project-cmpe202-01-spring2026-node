@@ -289,7 +289,7 @@ export default function Home() {
                     <h2 className="text-4xl md:text-5xl font-bold mb-4">Ready to host your own event?</h2>
                     <p className="text-xl text-blue-100 mb-8">Join thousands of organizers using Node Events to create and manage amazing experiences.</p>
                     <Link
-                        to="/create-event"
+                        to="/createEvent"
                         className="inline-flex items-center gap-2 bg-white text-blue-700 hover:bg-blue-50 px-8 py-4 rounded-xl text-lg font-semibold transition-all shadow-xl"
                     >
                         Create Your Event <ChevronRight size={20} />

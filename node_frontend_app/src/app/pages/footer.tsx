@@ -28,7 +28,7 @@ export default function Footer() {
                     <div>
                         <h3 className="font-semibold text-white mb-4">Organizers</h3>
                         <ul className="space-y-2 text-sm">
-                            <li><Link to="/create-event" className="hover:text-white transition-colors">Create Event</Link></li>
+                            <li><Link to="/createEvent" className="hover:text-white transition-colors">Create Event</Link></li>
                             <li><Link to="/dashboard" className="hover:text-white transition-colors">Dashboard</Link></li>
                         </ul>
                     </div>

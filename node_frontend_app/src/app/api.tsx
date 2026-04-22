@@ -98,7 +98,7 @@ let refreshPromise: Promise<string> | null = null;
 
 function mapBackendRole(role: unknown): User['role'] {
   if (role === 'ORGANIZER' || role === 'ADMIN') return role;
-  return 'USER';
+  return 'ATTENDEE';
 }
 
 function readStoredUser(): StoredUser | null {
