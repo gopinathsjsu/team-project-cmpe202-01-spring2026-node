@@ -1,5 +1,6 @@
 package com.node.discoveryService.model;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -22,14 +23,14 @@ import jakarta.persistence.ManyToOne;
 public class Event {
     
     @Id
-    @GeneratedValue(strategy=GenerationType.IDENTITY)
-    private long eventId;
+    @GeneratedValue(strategy=GenerationType.UUID)
+    private String eventId;
 
     private String eventName;
     private String eventDescription;
     private LocalDate eventStartDate;
     private LocalDate eventEndDate;
-    private long eventOwnerId;
+    private String eventOwnerId;
     private long maxCapacity;
 
     @Enumerated(EnumType.STRING)
@@ -41,13 +42,13 @@ public class Event {
     private String imageUrl;
 
     private long waitlistCapacity;
-    private String ticketPrice;
+    private BigDecimal ticketPrice;
     private String eventTimeZone;
     private Instant eventStartInstant;
     private Instant eventEndInstant;
     private Instant eventPublishInstant;
     private LocalDate eventPublishDate;
-    private long approverId;
+    private String approverId;
 
 
 
@@ -69,7 +70,7 @@ public class Event {
     {
         return eventEndDate;
     }
-    public long getEventOwnerId()
+    public String getEventOwnerId()
     {
         return eventOwnerId;
     }
@@ -97,7 +98,7 @@ public class Event {
     {
         return waitlistCapacity;
     }
-     public String getTicketPrice()
+     public BigDecimal getTicketPrice()
     {
         return ticketPrice;
     }
@@ -121,7 +122,7 @@ public class Event {
     {
         return eventPublishDate;
     }
-     public long getApproverId()
+     public String getApproverId()
     {
         return approverId;
     }
@@ -144,7 +145,7 @@ public class Event {
     {
         this.eventEndDate  = eventEndDate ;
     }
-    public void setEventOwnerId(long eventOwnerId)
+    public void setEventOwnerId(String eventOwnerId)
     {
         this.eventOwnerId = eventOwnerId;
     }
@@ -172,7 +173,7 @@ public class Event {
     {
         this.waitlistCapacity = waitlistCapacity;
     }
-    public void setTicketPrice(String ticketPrice)
+    public void setTicketPrice(BigDecimal ticketPrice)
     {
         this.ticketPrice = ticketPrice;
     }
@@ -196,7 +197,7 @@ public class Event {
     {
         this.eventPublishDate = eventPublishDate;
     }
-    public void setApproverId(long approverId)
+    public void setApproverId(String approverId)
     {
         this.approverId = approverId;
     }

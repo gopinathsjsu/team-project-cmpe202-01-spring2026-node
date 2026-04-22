@@ -11,8 +11,8 @@ import jakarta.persistence.Id;
 public class EventCategory {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long categoryId;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String categoryId;
     
     private String categoryName;
     private String categoryDescription;
