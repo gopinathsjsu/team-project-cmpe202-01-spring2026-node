@@ -77,6 +77,12 @@ export function Login() {
               Create one
             </Link>
           </p>
+          <p className="mt-2 text-xs text-gray-500">
+            Need first-time setup?{' '}
+            <Link to="/bootstrap-admin" className="text-blue-600 hover:underline">
+              Bootstrap initial admin
+            </Link>
+          </p>
         </CardContent>
       </Card>
     </div>
