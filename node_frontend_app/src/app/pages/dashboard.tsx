@@ -526,7 +526,7 @@ export function Dashboard() {
                             {orgTotal > 0 && (
                                 <div className="flex items-center justify-between gap-4 pt-6 border-t mt-6">
                                     <p className="text-sm text-gray-600">
-                                        Page {orgPage + 1} of {Math.max(1, orgTotalPages)} ({orgTotal} in this tab)
+                                        Page {orgPage + 1} of {Math.max(1, orgTotalPages)} total pages.        
                                     </p>
                                     <div className="flex gap-2">
                                         <Button
@@ -549,6 +549,9 @@ export function Dashboard() {
                                             Next
                                             <ChevronRight className="h-4 w-4" />
                                         </Button>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-600">{orgTotal} items(s) in this tab</p>
                                     </div>
                                 </div>
                             )}

@@ -47,7 +47,7 @@ function PaginationBar(props: {
     return (
         <div className="flex items-center justify-between gap-4 pt-4 border-t mt-4">
             <p className="text-sm text-gray-600">
-                Showing page {page + 1} of {Math.max(1, totalPages)} ({totalElements} total)
+                Showing page {page + 1} of {Math.max(1, totalPages)} 
             </p>
             <div className="flex gap-2">
                 <Button
@@ -70,6 +70,9 @@ function PaginationBar(props: {
                     Next
                     <ChevronRight className="h-4 w-4" />
                 </Button>
+            </div>
+            <div>
+                <p className="text-sm text-gray-600">{totalElements} item(s) total</p>
             </div>
         </div>
     );

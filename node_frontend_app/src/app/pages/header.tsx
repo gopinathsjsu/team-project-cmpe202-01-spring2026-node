@@ -52,7 +52,7 @@ export default function Header() {
                         )}
 
                         {isAuthenticated && (currentUser?.role === 'ORGANIZER' || currentUser?.role === 'ADMIN') && (
-                            <Link to="/create-event" className={navLinkClass('/create-event')}>
+                            <Link to="/createEvent" className={navLinkClass('/createEvent')}>
                                 <span className="flex items-center gap-1.5"><Plus className="h-4 w-4" /> Create Event</span>
                             </Link>
                         )}
@@ -151,7 +151,7 @@ export default function Header() {
 
                         {isAuthenticated && (currentUser?.role === 'ORGANIZER' || currentUser?.role === 'ADMIN') && (
                             <Link
-                                to="/create-event"
+                                to="/createEvent"
                                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 text-gray-700"
                                 onClick={() => setMobileMenuOpen(false)}
                             >
