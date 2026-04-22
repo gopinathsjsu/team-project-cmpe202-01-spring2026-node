@@ -1,157 +1,244 @@
 package com.node.discoveryService.model;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
+
 
 @Entity
+@Table(name = "events")
 public class Event {
     
     @Id
     @GeneratedValue(strategy=GenerationType.IDENTITY)
-    private long id;
+    private long eventId;
 
-    private String title;
-    private String description;
-    private LocalDateTime dateTime;
-    private String location;
-    private long organizer_id;
-    private long capacity;
-    private String status;
-    private LocalDateTime created_at;
-    private LocalDateTime updated_at;
-    private LocalDateTime approved_at;
-    private long approved_by;
-    private String image_url;
+    private String eventName;
+    private String eventDescription;
+    private LocalDate eventStartDate;
+    private LocalDate eventEndDate;
+    private long eventOwnerId;
+    private long maxCapacity;
+
+    @Enumerated(EnumType.STRING)
+    private EventStatus status;
+
+
+    private LocalDate createdAt;
+    private LocalDate updatedAt;
+    private String imageUrl;
+
+    private long waitlistCapacity;
+    private String ticketPrice;
+    private String eventTimeZone;
+    private Instant eventStartInstant;
+    private Instant eventEndInstant;
+    private Instant eventPublishInstant;
+    private LocalDate eventPublishDate;
+    private long approverId;
+
+
 
 
     //Getters
-    public String getTitle()
+    public String getEventName()
     {
-        return title;
+        return eventName;
     }
-    public String getDescription()
+    public String getEventDescription()
     {
-        return description;
+        return eventDescription;
     }
-    public LocalDateTime getDateTime()
+    public LocalDate getEventStartDate()
     {
-        return dateTime;
+        return eventStartDate;
     }
-    public String getLocation()
+    public LocalDate getEventEndDate()
     {
-        return location;
+        return eventEndDate;
     }
-    public long getOrganizer_id()
+    public long getEventOwnerId()
     {
-        return organizer_id;
+        return eventOwnerId;
     }
-     public long getCapacity()
+     public long getMaxCapacity()
     {
-        return capacity;
+        return maxCapacity;
     }
-     public String getStatus()
+     public EventStatus getStatus()
     {
         return status;
     }
-    public LocalDateTime getCreated_at()
+    public LocalDate getCreatedAt()
     {
-        return created_at;
+        return createdAt;
     }
-    public LocalDateTime getUpdated_at()
+    public LocalDate getUpdatedAt()
     {
-        return updated_at;
+        return updatedAt;
     }
-    public LocalDateTime getApproved_at()
+    public String getImageUrl()
     {
-        return approved_at;
+        return imageUrl;
     }
-    public long getApproved_by()
+    public long getWaitlistCapacity()
     {
-        return approved_by;
+        return waitlistCapacity;
     }
-    public String getImage_url()
+     public String getTicketPrice()
     {
-        return image_url;
+        return ticketPrice;
+    }
+     public String getEventTimeZone()
+    {
+        return eventTimeZone;
+    }
+     public Instant getEventStartInstant()
+    {
+        return eventStartInstant;
+    }
+     public Instant getEventEndInstant()
+    {
+        return eventEndInstant;
+    }
+     public Instant getEventPublishInstant()
+    {
+        return eventPublishInstant;
+    }
+     public LocalDate getEventPublishDate()
+    {
+        return eventPublishDate;
+    }
+     public long getApproverId()
+    {
+        return approverId;
     }
 
 
     //Setters
-    public void setTitle(String title)
+    public void setEventName(String eventName)
     {
-        this.title = title;
+        this.eventName = eventName;
     }
-    public void setDescription(String description)
+    public void setEventDescription(String eventDescription)
     {
-        this.description = description;
+        this.eventDescription = eventDescription;
     }
-    public void setDateTime(LocalDateTime dateTime)
+    public void setEventStartDate(LocalDate eventStartDate )
     {
-        this.dateTime = dateTime;
+        this.eventStartDate  = eventStartDate ;
     }
-    public void setLocation(String location)
+    public void setEventEndDate(LocalDate eventEndDate )
     {
-        this.location = location;
+        this.eventEndDate  = eventEndDate ;
     }
-    public void setOrganizer_id(long organizer_id)
+    public void setEventOwnerId(long eventOwnerId)
     {
-        this.organizer_id = organizer_id;
+        this.eventOwnerId = eventOwnerId;
     }
-     public void setCapacity(long capacity)
+     public void setMaxCapacity(long maxCapacity)
     {
-        this.capacity = capacity;
+        this.maxCapacity = maxCapacity;
     }
-     public void setStatus(String status)
+     public void setStatus(EventStatus status)
     {
         this.status = status;
     }
-    public void setCreated_at(LocalDateTime created_at)
+    public void setCreatedAt(LocalDate createdAt)
     {
-        this.created_at = created_at;
+        this.createdAt = createdAt;
     }
-    public void setUpdated_at(LocalDateTime updated_at)
+    public void setUpdatedAt(LocalDate updatedAt)
     {
-        this.updated_at = updated_at;
+        this.updatedAt = updatedAt;
     }
-    public void setApproved_at(LocalDateTime approved_at)
+    public void setImageUrl(String imageUrl)
     {
-        this.approved_at = approved_at;
+        this.imageUrl = imageUrl;
     }
-    public void setApproved_by(long approved_by)
+    public void setWaitlistCapacity(long waitlistCapacity)
     {
-        this.approved_by = approved_by;
+        this.waitlistCapacity = waitlistCapacity;
     }
-    public void setImage_url(String image_url)
+    public void setTicketPrice(String ticketPrice)
     {
-        this.image_url = image_url;
+        this.ticketPrice = ticketPrice;
     }
+    public void setEventTimeZone(String eventTimeZone)
+    {
+        this.eventTimeZone = eventTimeZone;
+    }
+    public void setEventStartInstant(Instant eventStartInstant)
+    {
+        this.eventStartInstant = eventStartInstant;
+    }
+    public void setEventEndInstant(Instant eventEndInstant)
+    {
+        this.eventEndInstant = eventEndInstant;
+    }
+    public void setEventPublishInstant(Instant eventPublishInstant)
+    {
+        this.eventPublishInstant = eventPublishInstant;
+    }
+    public void setEventPublishDate(LocalDate eventPublishDate)
+    {
+        this.eventPublishDate = eventPublishDate;
+    }
+    public void setApproverId(long approverId)
+    {
+        this.approverId = approverId;
+    }
+
 
 
     //Junction table for event and category
     @ManyToMany
     @JoinTable(
-        name = "event_category_junction",
+        name = "event_categories_mapping",
         joinColumns = @JoinColumn(name = "event_id"),
         inverseJoinColumns = @JoinColumn(name = "category_id")
     )
-    private List<Category> categories; 
+    private List<EventCategory> categories; 
 
 
-    public List<Category> getCategories()
+    public List<EventCategory> getCategories()
     {
         return categories;
     }
 
-    public void setCategories(List<Category> categories)
+    public void setCategories(List<EventCategory> categories)
     {
         this.categories = categories;
     }
+
+
+
+    //Junction table for location
+    @ManyToOne
+    @JoinColumn(name = "location_id")
+    private EventLocation eventLocation;
+
+    public EventLocation getEventLocation()
+    {
+        return eventLocation ;
+    }
+
+    public void setEventLocation(EventLocation eventLocation)
+    {
+        this.eventLocation  = eventLocation ;
+    }
+    
 
 }

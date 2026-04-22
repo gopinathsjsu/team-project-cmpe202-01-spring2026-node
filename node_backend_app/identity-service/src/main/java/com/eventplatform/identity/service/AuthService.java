@@ -12,6 +12,7 @@ import com.eventplatform.identity.repository.UserRepository;
 import com.eventplatform.identity.security.JwtProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -33,6 +34,12 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final AuditLogService auditLogService;
     private final AuthenticationManager authenticationManager;
+
+    @Value("${app.jwt.access-token-expiration-ms}")
+    private long accessTokenExpirationMs;
+
+    @Value("${app.jwt.refresh-token-expiration-ms}")
+    private long refreshTokenExpirationMs;
 
     @Transactional
     public AuthResponse register(RegisterRequest request, String ipAddress) {
@@ -102,6 +109,9 @@ public class AuthService {
         String accessToken = jwtProvider.generateAccessToken(user.getId(), user.getEmail(), user.getRole());
         String newRefreshToken = refreshTokenService.createRefreshToken(user.getId());
 
+        auditLogService.log(user.getId(), "TOKEN_REFRESH", "USER", user.getId().toString(),
+                Map.of("email", user.getEmail()), null);
+
         return buildAuthResponse(user, accessToken, newRefreshToken);
     }
 
@@ -121,6 +131,9 @@ public class AuthService {
                 .user(userResponse)
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
+                .expiresIn(accessTokenExpirationMs / 1000L)
+                .refreshExpiresIn(refreshTokenExpirationMs / 1000L)
+                .tokenType("Bearer")
                 .build();
     }
 }

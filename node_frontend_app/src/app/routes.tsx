@@ -9,6 +9,10 @@ import { AdminPanel } from './pages/admin';
 import { EditEvent } from './pages/editEvent';
 import { EventDetail } from './pages/viewEventDetails';
 import { AllEvents } from './pages/events';
+import { Profile } from './pages/profile';
+import { AttendeesPage } from './pages/attendees';
+import { ViewBooking } from './pages/viewBooking';
+import { ContactPage } from './pages/contact';
 
 export default function AppRoutes() {
     return (
@@ -16,9 +20,24 @@ export default function AppRoutes() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['ORGANIZER', 'ADMIN']}><Dashboard /></ProtectedRoute>} />
             <Route
-                path="/create-event"
+                path="/dashboard"
+                element={
+                    <ProtectedRoute allowedRoles={['ATTENDEE', 'ORGANIZER', 'ADMIN']}>
+                        <Dashboard />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/profile"
+                element={
+                    <ProtectedRoute allowedRoles={['ATTENDEE', 'ORGANIZER', 'ADMIN']}>
+                        <Profile />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/createEvent"
                 element={
                     <ProtectedRoute allowedRoles={['ORGANIZER', 'ADMIN']}>
                         <CreateEvent />
@@ -33,10 +52,30 @@ export default function AppRoutes() {
                     </ProtectedRoute>
                 }
             />
-            <Route path="/admin" element={<AdminPanel />} />
+            <Route
+                path="/admin"
+                element={
+                    <ProtectedRoute allowedRoles={['ADMIN']}>
+                        <AdminPanel />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/events/:id/attendees"
+                element={
+                    <ProtectedRoute allowedRoles={['ORGANIZER', 'ADMIN']}>
+                        <AttendeesPage />
+                    </ProtectedRoute>
+                }
+            />
             <Route path="/events/:id" element={<EventDetail />} />
+            <Route path="/booking/:id" element={
+                <ProtectedRoute allowedRoles={['ATTENDEE', 'ORGANIZER', 'ADMIN']}>
+                    <ViewBooking />
+                </ProtectedRoute>
+            } />
+            <Route path="/contact" element={<ContactPage />} />
             <Route path="/events" element={<AllEvents />} />
-
         </Routes>
     );
 }

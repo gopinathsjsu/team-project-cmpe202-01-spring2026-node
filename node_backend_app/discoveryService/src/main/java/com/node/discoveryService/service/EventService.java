@@ -9,7 +9,7 @@ import com.node.discoveryService.model.Event;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 //import java.util.List;
 
 
@@ -19,7 +19,7 @@ public class EventService {
     @Autowired
     private EventRepository eventRepository;
 
-    public Page<Event> searchEvents(Pageable pageable, String keyword, String location, LocalDateTime date, String category)
+    public Page<Event> searchEvents(Pageable pageable, String keyword, String location, LocalDate date, String category)
     {
         //return eventRepository.findByTitleContainingOrDescriptionContaining(keyword, keyword);
         return eventRepository.findAll(EventSpecification.withFilters(keyword, location, date, category), pageable);

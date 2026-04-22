@@ -30,29 +30,42 @@ public class MapperUtils {
     private GeometryFactory geometryFactory;
 
     public EventInfoDto convertEventToDto(Events event, String organiserName, Long ticketsSold) {
+        EventLocationDto locationDto = null;
+        if (event.getEventLocation() != null) {
+            locationDto = EventLocationDto.builder()
+                    .locationName(event.getEventLocation().getLocationName())
+                    .locationAddress(event.getEventLocation().getLocationAddress())
+                    .latitude(event.getEventLocation().getLatitude())
+                    .longitude(event.getEventLocation().getLongitude())
+                    .build();
+        }
+
+        List<String> allowedTransitions = event.getStatus() != null
+                ? event.getStatus().allowedTransitions().stream().map(Enum::name).toList()
+                : List.of();
+
         EventInfoDto dto = EventInfoDto.builder()
                 .eventId(event.getEventId())
                 .eventName(event.getEventName())
                 .eventDescription(event.getEventDescription())
-                .categories(event.getCategories().stream().map(EventCategory::getCategoryName).toList())
+                .categories(event.getCategories() != null
+                        ? event.getCategories().stream().map(EventCategory::getCategoryName).toList()
+                        : List.of())
                 .maxCapacity(event.getMaxCapacity())
                 .waitlistCapacity(event.getWaitlistCapacity())
-                .eventLocation(
-                        EventLocationDto.builder().locationName(event.getEventLocation().getLocationName())
-                                .locationAddress(event.getEventLocation().getLocationAddress())
-                                .latitude(event.getEventLocation().getLatitude())
-                                .longitude(event.getEventLocation().getLongitude())
-                                .build()
-                )
+                .eventLocation(locationDto)
                 .ticketPrice(event.getTicketPrice())
                 .imageUrl(event.getImageUrl())
                 .eventStartInstant(event.getEventStartInstant())
                 .eventEndInstant(event.getEventEndInstant())
                 .eventPublishInstant(event.getEventPublishInstant())
+                .eventTimeZone(event.getEventTimeZone())
                 .status(event.getStatus())
+                .allowedTransitions(allowedTransitions)
                 .eventOwnerId(event.getEventOwnerId())
                 .eventOwnerName(organiserName)
                 .ticketsSold(ticketsSold)
+
                 .build();
         log.info("Mapped event {} to DTO: {}", event.getEventId(), dto);
         log.info("Saved event is: {}", event);
@@ -65,7 +78,6 @@ public class MapperUtils {
         loc.setLocationName(dto.getLocationName());
         loc.setLocationAddress(dto.getLocationAddress());
         if (dto.getLatitude() != null && dto.getLongitude() != null) {
-            // JTS uses (x=longitude, y=latitude)
             Point p = geometryFactory.createPoint(new Coordinate(dto.getLongitude(), dto.getLatitude()));
             p.setSRID(4326);
             loc.setLocation(p);
@@ -114,23 +126,20 @@ public class MapperUtils {
         }
 
         event.setEventOwnerId(request.getEventOwnerId());
-        try {
-            event.setStatus(EventStatus.fromString(request.getStatus()));
-        } catch (IllegalArgumentException ex) {
-            // rethrow so GlobalExceptionHandler can return a clear 400 with our message
-            throw new IllegalArgumentException(ex.getMessage());
-        }
+        event.setStatus(EventStatus.fromString(request.getStatus()));
 
-        //event.setTicketTypes(request.getTicketTypes());
         List<EventCategory> categories = new ArrayList<>();
         if (request.getCategories() != null && !request.getCategories().isEmpty()) {
-            categories.addAll(eventCategoryRepository.findAllById(request.getCategories()));
+            for (String categoryId : request.getCategories()) {
+                EventCategory category = eventCategoryRepository.findByCategoryId(categoryId);
+                if (category != null) {
+                    categories.add(category);
+                }
+            }
         }
         event.setCategories(categories);
 
         return event;
-
     }
-
-
+    
 }

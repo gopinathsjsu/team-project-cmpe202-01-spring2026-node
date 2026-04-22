@@ -1,10 +1,11 @@
-export type UserRole = 'USER' | 'ORGANIZER' | 'ADMIN';
+export type UserRole = 'ATTENDEE' | 'ORGANIZER' | 'ADMIN';
 
 export interface User {
   id: string;
   name: string;
   email: string;
   token: string;
+  refreshToken?: string;
   role: UserRole;
   avatar?: string;
 }
@@ -76,4 +77,118 @@ export interface EventFormData {
   waitlistCapacity: number;
   image: string;
   tags: string[];
+}
+
+export interface TicketTypes {
+  id?: string;
+  name: string;
+  description: string;
+  ticketType: string;
+  price: number | '0.00';
+  quantity: number;
+  waitlistCapacity: number | 0;
+  serviceFee: number;
+  total: number;
+}
+
+/** Draft row for create/edit event forms (booking service) */
+export interface TicketTypeDraft {
+  localKey: string;
+  /** Booking service uses string UUID primary keys */
+  backendId?: string;
+  ticketType: string;
+  description: string;
+  price: number;
+  totalQuantity: number;
+  waitlistCapacity: number;
+  soldQuantity?: number;
+}
+
+/** Response from GET /api/v1/ticket-types/event/{eventId} */
+export interface TicketTypeApi {
+  id: string;
+  eventId: string;
+  ticketType: string;
+  description?: string | null;
+  price: number;
+  totalQuantity: number;
+  waitlistCapacity?: number | null;
+  soldQuantity?: number | null;
+  availableQuantity?: number | null;
+}
+
+export interface UserBooking {
+  bookingId: string;
+  bookingReference: string;
+  eventId: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  quantity: number;
+  totalAmount: number;
+  createdAt: string;
+  eventName: string;
+  eventDescription: string;
+  eventStartInstant: string;
+  eventEndInstant: string;
+  imageUrl: string;
+  status: String;
+  eventOwnerId: string;
+  eventOwnerName: string;
+  eventLocation: {
+    locationName: string;
+    locationAddress: string;
+    latitude: number | null;
+    longitude: number | null;
+  };
+  eventTimeZone: string;
+}
+
+/** Spring Data `Page` JSON shape */
+export interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+  first: boolean;
+  last: boolean;
+}
+
+export interface EventAdminMetrics {
+  totalEvents: number;
+  publishedEvents: number;
+  submittedEvents: number;
+  platformRevenue: number;
+  ticketsSold: number;
+}
+
+export interface BookingAdminMetrics {
+  totalBookingsNonCancelled: number;
+  confirmedBookings: number;
+}
+
+export interface OrganizerEventSummary {
+  eventCount: number;
+  ticketsSold: number;
+  totalRevenue: number;
+  averageFillPercent: number;
+}
+
+export interface UserBookingCounts {
+  totalBookings: number;
+  upcomingBookings: number;
+}
+
+export interface EventBookingSummary {
+  confirmedBookingCount: number;
+  confirmedTicketQuantity: number;
+  confirmedRevenue: number;
+  cancelledBookingCount: number;
+}
+
+export interface AdminUserRow {
+  id: string;
+  email: string;
+  role: UserRole;
 }
