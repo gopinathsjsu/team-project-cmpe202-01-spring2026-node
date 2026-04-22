@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router';
+import { runAPI } from '../api';
 import type { Profile as ProfileType } from '../types';
 
 function getApiErrorMessage(err: unknown, fallback: string): string {
@@ -30,19 +31,7 @@ function getApiErrorMessage(err: unknown, fallback: string): string {
 export function Profile() {
     const { currentUser, setCurrentUser } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
-<<<<<<< HEAD
-    const [formData, setFormData] = useState({
-        name: currentUser?.name,
-        email: currentUser?.email,
-        phone: '+1 (555) 123-4567',
-        location: 'San Francisco, CA',
-        bio: 'Passionate about attending great events and connecting with like-minded people.',
-        website: 'https://johndoe.com',
-    });
-
-=======
     const api = runAPI();
->>>>>>> b896717 (Updated Admin actions)
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [locationSuggestions, setLocationSuggestions] = useState<string[]>([]);
@@ -163,14 +152,10 @@ export function Profile() {
             });
     };
 
-<<<<<<< HEAD
-=======
     const handleCancel = () => {
         if (profile) refreshFormFromProfile(profile);
         setIsEditing(false);
     };
-
->>>>>>> b896717 (Updated Admin actions)
     const handleChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
@@ -180,8 +165,6 @@ export function Profile() {
         navigate('/dashboard');
     };
 
-<<<<<<< HEAD
-=======
     const handleUseCurrentLocation = () => {
         if (!navigator.geolocation) {
             toast.error('Geolocation is not supported by your browser');
@@ -218,8 +201,6 @@ export function Profile() {
     if (loading) {
         return <div className="container mx-auto px-4 py-8">Loading profile...</div>;
     }
-
->>>>>>> b896717 (Updated Admin actions)
     return (
         <div className="min-h-screen bg-gray-50 py-8">
             <div className="container mx-auto px-4 max-w-4xl">
