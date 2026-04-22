@@ -15,5 +15,10 @@ import java.util.UUID;
 public class UserResponse {
     private UUID id;
     private String email;
+    private String username;
+    private String firstName;
+    private String lastName;
+    private String avatarUrl;
+    private boolean active;
     private Role role;
 }

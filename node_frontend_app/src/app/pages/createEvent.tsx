@@ -33,11 +33,25 @@ export function CreateEvent() {
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 
   const [categories, setCategories] = useState<EventCategory[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   useEffect(() => {
     const fetchCategories = async () => {
-      const categories = await runAPI().getCategories();
-      setCategories(categories);
+      try {
+        const categories = await runAPI().getCategories();
+        setCategories(Array.isArray(categories) ? categories : []);
+      } catch (err: unknown) {
+        const message =
+          typeof err === 'object' &&
+          err !== null &&
+          'response' in err &&
+          typeof (err as { response?: { data?: { message?: string } } }).response?.data?.message === 'string'
+            ? (err as { response?: { data?: { message?: string } } }).response!.data!.message!
+            : 'Could not load categories. Make sure Event Service is running.';
+        toast.error(message);
+      } finally {
+        setCategoriesLoading(false);
+      }
     };
     fetchCategories();
   }, []);
@@ -402,6 +416,7 @@ export function CreateEvent() {
                     <Label htmlFor="category">Categories *</Label>
                     <Select
                       key={selectKey}
+                      disabled={categoriesLoading || categories.length === 0}
                       onValueChange={(value) => {
                         if (!formData.categories.includes(value)) {
                           setFormData(prev => ({ ...prev, categories: [...prev.categories, value] }));
@@ -411,7 +426,7 @@ export function CreateEvent() {
                       }}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select categories" />
+                        <SelectValue placeholder={categoriesLoading ? 'Loading categories...' : 'Select categories'} />
                       </SelectTrigger>
                       <SelectContent>
                         {categories.map(cat => {
@@ -422,6 +437,9 @@ export function CreateEvent() {
                         })}
                       </SelectContent>
                     </Select>
+                    {!categoriesLoading && categories.length === 0 && (
+                      <p className="text-xs text-red-600">No categories available. Start Event Service and refresh this page.</p>
+                    )}
                     {formData.categories.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-2">
                         {formData.categories.map(catId => {

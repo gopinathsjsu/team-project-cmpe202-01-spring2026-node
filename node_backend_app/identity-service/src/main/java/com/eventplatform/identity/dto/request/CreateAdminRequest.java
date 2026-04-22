@@ -1,6 +1,5 @@
 package com.eventplatform.identity.dto.request;
 
-import com.eventplatform.identity.entity.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -14,7 +13,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class RegisterRequest {
+public class CreateAdminRequest {
 
     @NotBlank(message = "Email is required")
     @Email(message = "Must be a valid email address")
@@ -33,6 +32,4 @@ public class RegisterRequest {
 
     @Size(max = 100, message = "Last name must be at most 100 characters")
     private String lastName;
-
-    private Role role;
 }

@@ -17,6 +17,7 @@ import {
     Users,
     ChevronLeft,
     ChevronRight,
+    Shield,
 } from 'lucide-react';
 
 import { format } from 'date-fns';
@@ -69,6 +70,8 @@ export function Dashboard() {
     const [attendeeBookingsTotal, setAttendeeBookingsTotal] = useState(0);
     const [attendeeBookingsTotalPages, setAttendeeBookingsTotalPages] = useState(0);
     const [attendeeBookingsLoading, setAttendeeBookingsLoading] = useState(false);
+    const [adminUserCount, setAdminUserCount] = useState(0);
+    const [totalUserCount, setTotalUserCount] = useState(0);
     //let myEvents: any[] = [];
 
     const authContext = useAuth();
@@ -79,10 +82,6 @@ export function Dashboard() {
             navigate("/login");
             return;
         }
-        if (currentUser.role === 'ADMIN') {
-            navigate('/admin');
-            return;
-        }
     }, [currentUser, navigate]);
 
     useEffect(() => {
@@ -90,6 +89,21 @@ export function Dashboard() {
             api.getOrganizerSummary(currentUser.id).then(setOrganizerSummary).catch(console.error);
         }
     }, [currentUser?.id, currentUser?.role]);
+
+    useEffect(() => {
+        if (currentUser?.role === 'ADMIN') {
+            api.getAdminUsers(0, 100)
+                .then((data) => {
+                    const users = Array.isArray(data.users) ? data.users : [];
+                    setTotalUserCount(data.totalElements ?? users.length);
+                    setAdminUserCount(users.filter((u) => u.role === 'ADMIN').length);
+                })
+                .catch(() => {
+                    setTotalUserCount(0);
+                    setAdminUserCount(0);
+                });
+        }
+    }, [currentUser?.role]);
 
     useEffect(() => {
         if (currentUser?.id && currentUser.role === 'ORGANIZER') {
@@ -298,6 +312,72 @@ export function Dashboard() {
                                     </div>
                                 </div>
                             )}
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+        );
+    }
+
+    // Admin Dashboard (separate from Admin Panel)
+    if (currentUser?.role === 'ADMIN') {
+        return (
+            <div className="min-h-screen bg-gray-50">
+                <div className="container mx-auto px-4 py-8">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
+                            <p className="text-gray-600">Quick overview and shortcuts. Use Admin Panel for moderation and management.</p>
+                        </div>
+                        <Button onClick={() => navigate('/admin')}>
+                            <Shield className="h-4 w-4 mr-2" />
+                            Open Admin Panel
+                        </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                                <Users className="h-4 w-4 text-gray-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{totalUserCount}</div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-sm font-medium">Admin Users</CardTitle>
+                                <Shield className="h-4 w-4 text-gray-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{adminUserCount}</div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-sm font-medium">Navigation</CardTitle>
+                                <Eye className="h-4 w-4 text-gray-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-sm text-gray-600">Use quick actions below.</div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Quick Actions</CardTitle>
+                            <CardDescription>Go directly to key admin and profile flows</CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex flex-wrap gap-3">
+                            <Button variant="outline" onClick={() => navigate('/admin')}>Admin Panel</Button>
+                            <Button variant="outline" onClick={() => navigate('/profile')}>My Profile</Button>
+                            <Button variant="outline" onClick={() => navigate('/events')}>Browse Events</Button>
+                            <Button onClick={() => navigate('/create-event')}>
+                                <Plus className="h-4 w-4 mr-2" />
+                                Create Event
+                            </Button>
                         </CardContent>
                     </Card>
                 </div>

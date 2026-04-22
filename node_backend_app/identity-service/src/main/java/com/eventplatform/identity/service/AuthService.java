@@ -1,13 +1,13 @@
 package com.eventplatform.identity.service;
 
 import com.eventplatform.identity.dto.request.LoginRequest;
+import com.eventplatform.identity.dto.request.CreateAdminRequest;
 import com.eventplatform.identity.dto.request.RegisterRequest;
 import com.eventplatform.identity.dto.response.AuthResponse;
 import com.eventplatform.identity.dto.response.UserResponse;
 import com.eventplatform.identity.entity.RefreshToken;
 import com.eventplatform.identity.entity.Role;
 import com.eventplatform.identity.entity.User;
-import com.eventplatform.identity.entity.UserProfile;
 import com.eventplatform.identity.repository.UserRepository;
 import com.eventplatform.identity.security.JwtProvider;
 import lombok.RequiredArgsConstructor;
@@ -43,29 +43,28 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request, String ipAddress) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("An account with this email already exists");
-        }
+        String normalizedEmail = request.getEmail().toLowerCase().trim();
+        ensureEmailAvailable(normalizedEmail);
 
         Role role = request.getRole() != null ? request.getRole() : Role.ATTENDEE;
         if (role == Role.ADMIN) {
             throw new IllegalArgumentException("Admin registration is not allowed");
         }
 
+        String username = resolveUsername(request.getUsername(), normalizedEmail);
+        ensureUsernameAvailable(username);
+
         User user = User.builder()
-                .email(request.getEmail().toLowerCase().trim())
+                .email(normalizedEmail)
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .username(username)
                 .role(role)
                 .isActive(true)
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
                 .build();
 
         user = userRepository.save(user);
-
-        UserProfile profile = UserProfile.builder()
-                .user(user)
-                .build();
-        user.setUserProfile(profile);
-        userRepository.save(user);
 
         String accessToken = jwtProvider.generateAccessToken(user.getId(), user.getEmail(), user.getRole());
         String refreshToken = refreshTokenService.createRefreshToken(user.getId());
@@ -74,6 +73,39 @@ public class AuthService {
                 Map.of("email", user.getEmail(), "role", role.name()), ipAddress);
 
         return buildAuthResponse(user, accessToken, refreshToken);
+    }
+
+    @Transactional
+    public AuthResponse bootstrapInitialAdmin(CreateAdminRequest request, String ipAddress) {
+        if (userRepository.existsByRole(Role.ADMIN)) {
+            throw new IllegalArgumentException("Initial admin already exists. Use admin APIs to create additional admins.");
+        }
+
+        String normalizedEmail = request.getEmail().toLowerCase().trim();
+        ensureEmailAvailable(normalizedEmail);
+
+        String username = resolveUsername(request.getUsername(), normalizedEmail);
+        ensureUsernameAvailable(username);
+
+        User adminUser = User.builder()
+                .email(normalizedEmail)
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .username(username)
+                .role(Role.ADMIN)
+                .isActive(true)
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .build();
+
+        adminUser = userRepository.save(adminUser);
+
+        String accessToken = jwtProvider.generateAccessToken(adminUser.getId(), adminUser.getEmail(), adminUser.getRole());
+        String refreshToken = refreshTokenService.createRefreshToken(adminUser.getId());
+
+        auditLogService.log(adminUser.getId(), "ADMIN_BOOTSTRAP", "USER", adminUser.getId().toString(),
+                Map.of("email", adminUser.getEmail(), "role", Role.ADMIN.name()), ipAddress);
+
+        return buildAuthResponse(adminUser, accessToken, refreshToken);
     }
 
     @Transactional
@@ -124,6 +156,10 @@ public class AuthService {
         UserResponse userResponse = UserResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
+                .username(user.getUsername())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .avatarUrl(user.getAvatarUrl())
                 .role(user.getRole())
                 .build();
 
@@ -135,5 +171,26 @@ public class AuthService {
                 .refreshExpiresIn(refreshTokenExpirationMs / 1000L)
                 .tokenType("Bearer")
                 .build();
+    }
+
+    private void ensureEmailAvailable(String email) {
+        if (userRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException("An account with this email already exists");
+        }
+    }
+
+    private void ensureUsernameAvailable(String username) {
+        if (username != null && userRepository.existsByUsername(username)) {
+            throw new IllegalArgumentException("Username is already taken");
+        }
+    }
+
+    private String resolveUsername(String requestedUsername, String normalizedEmail) {
+        if (requestedUsername != null && !requestedUsername.isBlank()) {
+            return requestedUsername.trim();
+        }
+
+        String inferred = normalizedEmail.split("@")[0];
+        return inferred.isBlank() ? null : inferred;
     }
 }

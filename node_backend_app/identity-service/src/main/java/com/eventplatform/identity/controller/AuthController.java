@@ -1,5 +1,6 @@
 package com.eventplatform.identity.controller;
 
+import com.eventplatform.identity.dto.request.CreateAdminRequest;
 import com.eventplatform.identity.dto.request.LoginRequest;
 import com.eventplatform.identity.dto.request.RefreshTokenRequest;
 import com.eventplatform.identity.dto.request.RegisterRequest;
@@ -33,6 +34,14 @@ public class AuthController {
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request,
                                                   HttpServletRequest httpRequest) {
         AuthResponse response = authService.register(request, getClientIp(httpRequest));
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/bootstrap-admin")
+    @Operation(summary = "Create initial admin account (one-time)")
+    public ResponseEntity<AuthResponse> bootstrapAdmin(@Valid @RequestBody CreateAdminRequest request,
+                                                       HttpServletRequest httpRequest) {
+        AuthResponse response = authService.bootstrapInitialAdmin(request, getClientIp(httpRequest));
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
