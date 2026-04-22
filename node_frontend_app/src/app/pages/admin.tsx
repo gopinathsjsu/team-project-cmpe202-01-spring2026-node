@@ -23,23 +23,25 @@ import {
     Ban,
     CheckCircle,
     AlertTriangle,
-<<<<<<< HEAD
     ChevronLeft,
     ChevronRight,
-=======
     UserPlus,
     UserMinus,
     UserX,
     RotateCcw
->>>>>>> b896717 (Updated Admin actions)
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 import { runAPI } from '../api';
 import { resolveEventImageUrl } from '@/lib/eventImageStorage';
-<<<<<<< HEAD
 import type { AdminUserRow, BookingAdminMetrics, Event, EventAdminMetrics } from '../types';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
 
 const PAGE_SIZE = 10;
 
@@ -97,19 +99,11 @@ function tabToEventStatus(tab: string): string | null {
             return null;
     }
 }
-=======
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '../components/ui/dropdown-menu';
->>>>>>> b896717 (Updated Admin actions)
 
 export function AdminPanel() {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
-    const api = runAPI();
+    const api = useMemo(() => runAPI(), []);
 
     const [eventMetrics, setEventMetrics] = useState<EventAdminMetrics | null>(null);
     const [bookingMetrics, setBookingMetrics] = useState<BookingAdminMetrics | null>(null);
@@ -121,7 +115,6 @@ export function AdminPanel() {
     const [eventsLoading, setEventsLoading] = useState(false);
 
     const [searchQuery, setSearchQuery] = useState('');
-<<<<<<< HEAD
     const [debouncedEventSearch, setDebouncedEventSearch] = useState('');
     const [activeEventsTab, setActiveEventsTab] = useState('all');
 
@@ -181,7 +174,7 @@ export function AdminPanel() {
             })
             .catch((e) => {
                 console.error(e);
-                toast.error('Failed to load events');
+                // Keep auto-refresh failures silent; inline sections already show empty/loading states.
             })
             .finally(() => setEventsLoading(false));
     }, [api, activeEventsTab, eventsPage, debouncedEventSearch]);
@@ -213,7 +206,7 @@ export function AdminPanel() {
             })
             .catch((e) => {
                 console.error(e);
-                toast.error('Failed to load bookings');
+                // Keep auto-refresh failures silent; inline sections already show empty/loading states.
             })
             .finally(() => setBookingsLoading(false));
     }, [api, bookingsPage]);
@@ -234,7 +227,7 @@ export function AdminPanel() {
             })
             .catch((e) => {
                 console.error(e);
-                toast.error('Failed to load users (admin only)');
+                // Keep auto-refresh failures silent; inline sections already show empty/loading states.
             })
             .finally(() => setUsersLoading(false));
     }, [api, usersPage, userRoleFilter, debouncedUserSearch]);
@@ -278,9 +271,8 @@ export function AdminPanel() {
             };
         });
     }, [bookings]);
-=======
-    const [usersPage, setUsersPage] = useState(0);
-    const [usersPageSize] = useState(20);
+    const [managedUsersPage, setManagedUsersPage] = useState(0);
+    const [managedUsersPageSize] = useState(20);
     const [usersData, setUsersData] = useState<{
         users: Array<{
             id: string;
@@ -303,7 +295,6 @@ export function AdminPanel() {
         firstName: '',
         lastName: '',
     });
->>>>>>> b896717 (Updated Admin actions)
 
     if (currentUser?.role !== 'ADMIN') {
         return (
@@ -364,15 +355,8 @@ export function AdminPanel() {
         }).catch(() => toast.error('Failed to update event'));
     };
 
-<<<<<<< HEAD
-=======
-    const filteredEvents = events.filter(event =>
-        event?.eventName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        event?.eventOwnerName?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    const refreshUsers = (page = usersPage) => {
-        api.getAdminUsers(page, usersPageSize)
+    const refreshUsers = (page = managedUsersPage) => {
+        api.getAdminUsers(page, managedUsersPageSize)
             .then((data) => {
                 setUsersData({
                     users: data.users ?? [],
@@ -381,7 +365,7 @@ export function AdminPanel() {
                     totalElements: data.totalElements ?? 0,
                     hasNext: !!data.hasNext,
                 });
-                setUsersPage(data.page ?? 0);
+                setManagedUsersPage(data.page ?? 0);
             })
             .catch(() => toast.error('Failed to load users'));
     };
@@ -464,8 +448,6 @@ export function AdminPanel() {
                 toast.error(message);
             });
     };
-
->>>>>>> b896717 (Updated Admin actions)
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="container mx-auto px-4 py-8">
@@ -869,7 +851,7 @@ export function AdminPanel() {
                             <div className="flex gap-2">
                                 <Button
                                     variant="outline"
-                                    disabled={usersData.page <= 0}
+                                disabled={usersData.page <= 0}
                                     onClick={() => refreshUsers(Math.max(usersData.page - 1, 0))}
                                 >
                                     Previous
@@ -877,7 +859,7 @@ export function AdminPanel() {
                                 <Button
                                     variant="outline"
                                     disabled={!usersData.hasNext}
-                                    onClick={() => refreshUsers(usersData.page + 1)}
+                                onClick={() => refreshUsers(usersData.page + 1)}
                                 >
                                     Next
                                 </Button>

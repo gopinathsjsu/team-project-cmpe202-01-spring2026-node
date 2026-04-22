@@ -1,6 +1,5 @@
 //  this file will communicate with backend api's using http calls
 import axios from 'axios';
-<<<<<<< HEAD
 import type {
   AdminUserRow,
   Booking,
@@ -16,6 +15,8 @@ import type {
   User,
   UserBooking,
   UserBookingCounts,
+  Profile,
+  AdminUsersPage,
 } from './types';
 
 function mapBookingResponseToBooking(d: Record<string, unknown>): Booking {
@@ -64,9 +65,6 @@ function mapBookingResponseForUserToUserBooking(d: Record<string, unknown>): Use
     eventTimeZone: String(d.eventTimeZone ?? ''),
   };
 }
-=======
-import type { Event, Booking, User, EventCategory, TicketTypeDraft, TicketTypeApi, UserBooking, Profile, AdminUsersPage } from './types';
->>>>>>> b896717 (Updated Admin actions)
 
 function normalizeTicketTypeApi(raw: unknown): TicketTypeApi | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -130,7 +128,7 @@ type CreateAdminPayload = {
 
 function mapBackendRole(role: unknown): User['role'] {
   if (role === 'ORGANIZER' || role === 'ADMIN') return role;
-  return 'USER';
+  return 'ATTENDEE';
 }
 
 function readStoredUser(): StoredUser | null {

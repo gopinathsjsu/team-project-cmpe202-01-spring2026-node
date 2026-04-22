@@ -15,12 +15,9 @@ import {
     Plus,
     Eye,
     Users,
-<<<<<<< HEAD
     ChevronLeft,
     ChevronRight,
-=======
     Shield,
->>>>>>> b896717 (Updated Admin actions)
 } from 'lucide-react';
 
 import { format } from 'date-fns';
@@ -65,7 +62,6 @@ export function Dashboard() {
     const [orgLoading, setOrgLoading] = useState(false);
 
     const [myBookings, setMyBookings] = useState<any[]>([]);
-<<<<<<< HEAD
     const [bookingCounts, setBookingCounts] = useState<{
         totalBookings: number;
         upcomingBookings: number;
@@ -74,10 +70,8 @@ export function Dashboard() {
     const [attendeeBookingsTotal, setAttendeeBookingsTotal] = useState(0);
     const [attendeeBookingsTotalPages, setAttendeeBookingsTotalPages] = useState(0);
     const [attendeeBookingsLoading, setAttendeeBookingsLoading] = useState(false);
-=======
     const [adminUserCount, setAdminUserCount] = useState(0);
     const [totalUserCount, setTotalUserCount] = useState(0);
->>>>>>> b896717 (Updated Admin actions)
     //let myEvents: any[] = [];
 
     const authContext = useAuth();
@@ -92,14 +86,9 @@ export function Dashboard() {
 
     useEffect(() => {
         if (currentUser?.id && currentUser.role === 'ORGANIZER') {
-<<<<<<< HEAD
             api.getOrganizerSummary(currentUser.id).then(setOrganizerSummary).catch(console.error);
-=======
-            api.getEventsByOwnerId(currentUser.id).then((data) => {
-                setEvents(Array.isArray(data) ? data : []);
-            }).catch(console.error);
         }
-    }, [currentUser?.id]);
+    }, [currentUser?.id, currentUser?.role]);
 
     useEffect(() => {
         if (currentUser?.role === 'ADMIN') {
@@ -115,18 +104,6 @@ export function Dashboard() {
                 });
         }
     }, [currentUser?.role]);
-
-    useEffect(() => {
-        if (currentUser?.role === 'USER' && currentUser?.id) {
-            api.getUserBookings(currentUser.id)
-                //.then(bookings => setMyBookings(bookings.filter((b: any) => b.status === 'CONFIRMED' || b.status === 'confirmed')))
-                .then(bookings => setMyBookings(bookings))
-                .catch(console.error);
-            console.log("Current User ID:", currentUser.id);
-            console.log("My Bookings from api:", myBookings);
->>>>>>> b896717 (Updated Admin actions)
-        }
-    }, [currentUser?.id, currentUser?.role]);
 
     useEffect(() => {
         if (currentUser?.id && currentUser.role === 'ORGANIZER') {
