@@ -2,7 +2,8 @@ package com.node.discoveryService.specification;
 
 import org.springframework.data.jpa.domain.Specification;
 import com.node.discoveryService.model.Event;
-import java.time.LocalDateTime;
+
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import jakarta.persistence.criteria.Predicate;
@@ -11,7 +12,7 @@ public class EventSpecification {
     public static Specification<Event> withFilters(
         String keyword,
         String location,
-        LocalDateTime date,
+        LocalDate date,
         String category
     )
     {
@@ -21,24 +22,24 @@ public class EventSpecification {
             if(keyword != null && !keyword.isEmpty())
             {
                 predicates.add(criteriaBuilder.or(
-                    criteriaBuilder.like(criteriaBuilder.lower(root.get("title")), "%" + keyword.toLowerCase() + "%"),
-                    criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), "%" + keyword.toLowerCase() + "%")
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("eventName")), "%" + keyword.toLowerCase() + "%"),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("eventDescription")), "%" + keyword.toLowerCase() + "%")
                 ));
             }
 
             if(location != null && !location.isEmpty())
             {
-                predicates.add(criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.lower(root.get("location"))), "%" + location.toLowerCase() + "%"));
+                predicates.add(criteriaBuilder.or(criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.lower(root.join("eventLocation").get("locationName"))), "%" + location.toLowerCase() + "%"), criteriaBuilder.like(criteriaBuilder.lower(root.join("eventLocation").get("locationAddress")), "%" + location.toLowerCase() + "%")));
             }
 
             if(date != null)
             {
-                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("dateTime"), date));
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("eventStartDate"), date));
             }
 
             if(category != null && !category.isEmpty())
             {
-                predicates.add(criteriaBuilder.equal(criteriaBuilder.lower(root.join("categories").get("name")), category.toLowerCase()));
+                predicates.add(criteriaBuilder.equal(criteriaBuilder.lower(root.join("categories").get("categoryName")), category.toLowerCase()));
             }
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));

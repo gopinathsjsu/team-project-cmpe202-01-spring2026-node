@@ -23,7 +23,7 @@ spring:
         format_sql: true
 
   flyway:
-    enabled: false
+    enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
 
@@ -39,7 +39,7 @@ app:
     refresh-token-expiration-ms: 1209600000  # 14 days
 
   event-service:
-    base-url: ${EVENT_SERVICE_URL:http://localhost:8082}
+    base-url: ${EVENT_SERVICE_URL:http://localhost:8080}
     timeout-seconds: ${EVENT_SERVICE_TIMEOUT:10}
 
 management:

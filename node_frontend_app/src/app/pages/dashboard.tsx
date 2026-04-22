@@ -13,14 +13,18 @@ import {
     Edit,
     Trash2,
     Plus,
-    Eye
+    Eye,
+    Users,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-react';
 
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { runAPI } from '../api';
 import { useAuth } from '../context/AuthContext';
-import type { Booking } from '../types';
+import type { OrganizerEventSummary, UserBooking } from '../types';
+import { resolveEventImageUrl } from '@/lib/eventImageStorage';
 
 const createGoogleCalendarLink = (event: any) => {
     const title = encodeURIComponent(event.eventName || event.title || 'Event');
@@ -31,13 +35,13 @@ const createGoogleCalendarLink = (event: any) => {
     // Prefer the exact Instant fields which contain the full UTC date/time (e.g., 2026-03-24T18:00:00Z)
     const startDateStr = event.eventStartInstant || event.eventStartDate || event.startDate || new Date().toISOString();
     const endDateStr = event.eventEndInstant || event.eventEndDate || event.endDate || new Date().toISOString();
-    const timezone = event.timezone || "America/Los_Angeles";
     try {
         // Remove dashes, colons, and milliseconds to match Google Calendar format (YYYYMMDDTHHMMSSZ)
         const start = new Date(startDateStr).toISOString().replace(/-|:|\.\d\d\d/g, '');
-        console.log(start);
+        console.log("Start Date String:", startDateStr);
+        console.log("Start Date:", start);
         const end = new Date(endDateStr).toISOString().replace(/-|:|\.\d\d\d/g, '');
-        return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&ctz=${timezone}&details=${details}&location=${location}`;
+        return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${details}&location=${location}`;
     } catch (e) {
         return '#';
     }
@@ -47,51 +51,92 @@ export function Dashboard() {
     const navigate = useNavigate();
 
     const api = runAPI();
-    // Attendee Dashboard
-    const getEventBookings = (eventId: string) => {
-
-        if (eventId == null) {
-            console.log("Event ID is null");
-            return [];
-        }
-        api.getEventById(eventId).then((event) => {
-            return event;
-        });
-        return []; // mock
-    };
 
     const [events, setEvents] = useState<any[]>([]);
+    const [organizerSummary, setOrganizerSummary] = useState<OrganizerEventSummary | null>(null);
+    const [orgTab, setOrgTab] = useState('all');
+    const [orgPage, setOrgPage] = useState(0);
+    const [orgTotal, setOrgTotal] = useState(0);
+    const [orgTotalPages, setOrgTotalPages] = useState(0);
+    const [orgLoading, setOrgLoading] = useState(false);
+
     const [myBookings, setMyBookings] = useState<any[]>([]);
+    const [bookingCounts, setBookingCounts] = useState<{
+        totalBookings: number;
+        upcomingBookings: number;
+    } | null>(null);
+    const [attendeeBookingsPage, setAttendeeBookingsPage] = useState(0);
+    const [attendeeBookingsTotal, setAttendeeBookingsTotal] = useState(0);
+    const [attendeeBookingsTotalPages, setAttendeeBookingsTotalPages] = useState(0);
+    const [attendeeBookingsLoading, setAttendeeBookingsLoading] = useState(false);
     //let myEvents: any[] = [];
 
     const authContext = useAuth();
     const currentUser = authContext.currentUser;
 
-    if (currentUser?.id == null) {
-        navigate("/login");
-    }
-
     useEffect(() => {
-        if (currentUser?.id) {
-            api.getEventsByOwnerId(currentUser.id).then((data) => {
-                setEvents(Array.isArray(data) ? data : []);
-            }).catch(console.error);
+        if (!currentUser?.id) {
+            navigate("/login");
+            return;
         }
-    }, [currentUser?.id]);
-
-
+        if (currentUser.role === 'ADMIN') {
+            navigate('/admin');
+            return;
+        }
+    }, [currentUser, navigate]);
 
     useEffect(() => {
-        if (currentUser?.role === 'USER') {
-            api.getUserBookings(currentUser.id)
-                .then(bookings => setMyBookings(bookings.filter((b: any) => b.status === 'confirmed')))
-                .catch(console.error);
+        if (currentUser?.id && currentUser.role === 'ORGANIZER') {
+            api.getOrganizerSummary(currentUser.id).then(setOrganizerSummary).catch(console.error);
         }
     }, [currentUser?.id, currentUser?.role]);
 
+    useEffect(() => {
+        if (currentUser?.id && currentUser.role === 'ORGANIZER') {
+            setOrgLoading(true);
+            api
+                .getOrganizerEventsPaged({
+                    organizerId: currentUser.id,
+                    tab: orgTab,
+                    page: orgPage,
+                    size: 8,
+                })
+                .then((res) => {
+                    setEvents(Array.isArray(res.content) ? res.content : []);
+                    setOrgTotal(res.totalElements);
+                    setOrgTotalPages(res.totalPages);
+                })
+                .catch(console.error)
+                .finally(() => setOrgLoading(false));
+        }
+    }, [currentUser?.id, currentUser?.role, orgTab, orgPage]);
+
+    useEffect(() => {
+        if (currentUser?.role !== 'ATTENDEE' || !currentUser?.id) return;
+        setAttendeeBookingsLoading(true);
+        Promise.all([
+            api.getUserBookingCounts(currentUser.id),
+            api.getUserBookingsPaged({ userId: currentUser.id, page: attendeeBookingsPage, size: 10 }),
+        ])
+            .then(([counts, paged]) => {
+                setBookingCounts(counts);
+                setMyBookings(Array.isArray(paged.content) ? paged.content : []);
+                setAttendeeBookingsTotal(paged.totalElements);
+                setAttendeeBookingsTotalPages(paged.totalPages);
+            })
+            .catch(console.error)
+            .finally(() => setAttendeeBookingsLoading(false));
+    }, [currentUser?.id, currentUser?.role, attendeeBookingsPage]);
+
     // Attendee Dashboard
-    if (currentUser?.role === 'USER') {
-        const totalSpent = myBookings.reduce((sum: number, b: any) => sum + b.totalAmount, 0);
+    if (currentUser?.role === 'ATTENDEE') {
+        /* useEffect(() => {
+        if (currentUser?.id) {
+            api.getEventsBookedByUserId(currentUser.id).then((data) => {
+                setEvents(Array.isArray(data) ? data : []);
+            }).catch(console.error);
+        }
+    }, [currentUser?.id]); */
 
         return (
             <div className="min-h-screen bg-gray-50">
@@ -105,27 +150,25 @@ export function Dashboard() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
+                                <CardTitle className="text-sm font-medium">Upcoming Events</CardTitle>
                                 <Ticket className="h-4 w-4 text-gray-500" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">{myBookings.length}</div>
+                                <div className="text-2xl font-bold">{bookingCounts?.upcomingBookings ?? 0}</div>
                             </CardContent>
                         </Card>
 
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-sm font-medium">Tickets Purchased</CardTitle>
+                                <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
                                 <Calendar className="h-4 w-4 text-gray-500" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">
-                                    {myBookings.reduce((sum, b) => sum + b.ticketQuantity, 0)}
-                                </div>
+                                <div className="text-2xl font-bold">{bookingCounts?.totalBookings ?? 0}</div>
                             </CardContent>
                         </Card>
 
-                        <Card>
+                        {/* <Card>
                             <CardHeader className="flex flex-row items-center justify-between pb-2">
                                 <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
                                 <DollarSign className="h-4 w-4 text-gray-500" />
@@ -133,7 +176,7 @@ export function Dashboard() {
                             <CardContent>
                                 <div className="text-2xl font-bold">${totalSpent.toFixed(2)}</div>
                             </CardContent>
-                        </Card>
+                        </Card> */}
                     </div>
 
                     {/* Bookings List */}
@@ -151,28 +194,27 @@ export function Dashboard() {
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    {myBookings.map((booking: Booking) => {
-                                        const event = events.find(e => e.eventId === booking.eventId);
-                                        if (!event) return null;
-
+                                    {myBookings.map((booking: UserBooking) => {
+                                        // const event = events.find(e => e.eventId === booking.eventId);
+                                        // if (!event) return null;
                                         return (
-                                            <div key={booking.id} className="flex items-start gap-4 p-4 border rounded-lg">
+                                            <div key={booking.bookingId} className="flex items-start gap-4 p-4 border rounded-lg">
                                                 <img
-                                                    src={event.imageUrl || ''}
-                                                    alt={event.eventDescription}
+                                                    src={resolveEventImageUrl(booking.imageUrl)}
+                                                    alt={booking.eventDescription}
                                                     className="w-24 h-24 object-cover rounded"
                                                     onError={(e) => {
                                                         (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1540317580384-e5d43867caa6?auto=format&fit=crop&w=800&q=80';
                                                     }}
                                                 />
                                                 <div className="flex-1">
-                                                    <h3 className="font-semibold mb-1">{event.eventDescription}</h3>
+                                                    <h3 className="font-semibold mb-1">{booking.eventName}</h3>
                                                     <p className="text-sm text-gray-600 mb-2">
-                                                        {format(new Date(String(event.eventStartInstant || event.eventStartDate || event.startDate || '').replace('Z', '')), 'MMM dd, yyyy')} at {event.eventStartInstant ? format(new Date(String(event.eventStartInstant).replace('Z', '')), 'h:mm a') : ''}
+                                                        {format(new Date(String(booking.eventStartInstant || '').replace('Z', '')), 'MMM dd, yyyy')} at {booking.eventStartInstant ? format(new Date(String(booking.eventStartInstant).replace('Z', '')), 'h:mm a') : ''}
                                                     </p>
                                                     <div className="flex items-center gap-4 text-sm">
                                                         <span className="text-gray-600">
-                                                            {booking.ticketQuantity} {booking.ticketQuantity === 1 ? 'ticket' : 'tickets'}
+                                                            {booking.quantity} {booking.quantity === 1 ? 'ticket' : 'tickets'}
                                                         </span>
                                                         <span className="font-medium">${booking.totalAmount.toFixed(2)}</span>
                                                         <Badge variant="secondary">{booking.status}</Badge>
@@ -181,14 +223,38 @@ export function Dashboard() {
                                                 <div className="flex flex-col gap-2">
                                                     <Button
                                                         variant="outline"
-                                                        onClick={() => navigate(`/events/${event.eventId}`)}
+                                                        onClick={() => navigate(`/booking/${booking.bookingId}`)}
+                                                    >
+                                                        <Eye className="h-4 w-4 mr-2" />
+                                                        Booking Details
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={() => navigate(`/events/${booking.eventId}`)}
                                                     >
                                                         View Event
                                                     </Button>
                                                     <Button
                                                         variant="secondary"
                                                         className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200"
-                                                        onClick={() => window.open(createGoogleCalendarLink(event), '_blank')}
+                                                        disabled={
+                                                            new Date(booking.eventStartInstant) < new Date() ||
+                                                            String(booking.status).toLowerCase() !== 'confirmed'
+                                                        }
+                                                        onClick={() => window.open(createGoogleCalendarLink({
+                                                            eventName: booking.eventDescription,
+                                                            eventStartInstant: booking.eventStartInstant,
+                                                            eventEndInstant: booking.eventEndInstant,
+                                                            eventDescription: `Booking for ${booking.eventDescription}`,
+                                                            eventLocation: {
+                                                                locationAddress: booking.eventLocation?.locationAddress || '',
+                                                                locationName: booking.eventLocation?.locationName || '',
+                                                                latitude: booking.eventLocation?.latitude || null,
+                                                                longitude: booking.eventLocation?.longitude || null,
+                                                            },
+                                                            timezone: 'America/Los_Angeles',
+
+                                                        }), '_blank')}
                                                     >
                                                         <Calendar className="h-4 w-4 mr-2" />
                                                         Add to Google Calendar
@@ -197,6 +263,39 @@ export function Dashboard() {
                                             </div>
                                         );
                                     })}
+                                </div>
+                            )}
+                            {attendeeBookingsTotal > 0 && (
+                                <div className="flex items-center justify-between gap-4 pt-6 border-t mt-6">
+                                    <p className="text-sm text-gray-600">
+                                        Page {attendeeBookingsPage + 1} of{' '}
+                                        {Math.max(1, attendeeBookingsTotalPages)} ({attendeeBookingsTotal} total)
+                                    </p>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={attendeeBookingsLoading || attendeeBookingsPage <= 0}
+                                            onClick={() => setAttendeeBookingsPage((p) => p - 1)}
+                                        >
+                                            <ChevronLeft className="h-4 w-4" />
+                                            Prev
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={
+                                                attendeeBookingsLoading ||
+                                                attendeeBookingsPage >= attendeeBookingsTotalPages - 1
+                                            }
+                                            onClick={() => setAttendeeBookingsPage((p) => p + 1)}
+                                        >
+                                            Next
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                 </div>
                             )}
                         </CardContent>
@@ -209,14 +308,36 @@ export function Dashboard() {
     // Organizer Dashboard
     if (currentUser?.role === 'ORGANIZER') {
         const myEvents = Array.isArray(events) ? events : [];
-        const totalRevenue = myEvents.reduce((sum, e) => sum + (e.ticketsSold * e.ticketPrice), 0) || 0;
-        const totalTicketsSold = myEvents.reduce((sum, e) => sum + e.ticketsSold, 0) || 0;
+        const totalRevenue =
+            organizerSummary != null
+                ? organizerSummary.totalRevenue
+                : myEvents.reduce((sum, e) => sum + (e.ticketsSold * e.ticketPrice), 0) || 0;
+        const totalTicketsSold =
+            organizerSummary != null ? organizerSummary.ticketsSold : myEvents.reduce((sum, e) => sum + e.ticketsSold, 0) || 0;
+
+        const reloadOrganizer = () => {
+            if (!currentUser?.id) return;
+            api.getOrganizerSummary(currentUser.id).then(setOrganizerSummary).catch(console.error);
+            api
+                .getOrganizerEventsPaged({
+                    organizerId: currentUser.id,
+                    tab: orgTab,
+                    page: orgPage,
+                    size: 8,
+                })
+                .then((res) => {
+                    setEvents(Array.isArray(res.content) ? res.content : []);
+                    setOrgTotal(res.totalElements);
+                    setOrgTotalPages(res.totalPages);
+                })
+                .catch(console.error);
+        };
 
         const handleDeleteEvent = (eventId: string) => {
             if (confirm('Are you sure you want to delete this event?')) {
                 api.deleteEvent(eventId).then(() => {
                     toast.success('Event deleted successfully');
-                    setEvents(events.filter(e => e.id !== eventId));
+                    reloadOrganizer();
                 });
             }
         };
@@ -234,7 +355,7 @@ export function Dashboard() {
             }
             api.updateEventStatus(eventId, newStatus).then(() => {
                 toast.success(`Event ${newStatus}`);
-                setEvents(events.map(e => e.id === eventId ? { ...e, status: newStatus } : e));
+                reloadOrganizer();
             });
         };
 
@@ -246,7 +367,7 @@ export function Dashboard() {
                             <h1 className="text-3xl font-bold mb-2">Organizer Dashboard</h1>
                             <p className="text-gray-600">Manage your events and track performance</p>
                         </div>
-                        <Button onClick={() => navigate('/create-event')}>
+                        <Button onClick={() => navigate('/createEvent')}>
                             <Plus className="h-4 w-4 mr-2" />
                             Create Event
                         </Button>
@@ -260,7 +381,9 @@ export function Dashboard() {
                                 <Calendar className="h-4 w-4 text-gray-500" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">{myEvents.length}</div>
+                                <div className="text-2xl font-bold">
+                                    {organizerSummary?.eventCount ?? myEvents.length}
+                                </div>
                             </CardContent>
                         </Card>
 
@@ -291,9 +414,15 @@ export function Dashboard() {
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold">
-                                    {myEvents.length > 0
-                                        ? Math.round(myEvents.reduce((sum, e) => sum + (e.ticketsSold / e.maxCapacity), 0) / myEvents.length * 100) || 0
-                                        : 0}
+                                    {organizerSummary != null
+                                        ? organizerSummary.averageFillPercent
+                                        : myEvents.length > 0
+                                            ? Math.round(
+                                                (myEvents.reduce((sum, e) => sum + e.ticketsSold / e.maxCapacity, 0) /
+                                                    myEvents.length) *
+                                                100
+                                            ) || 0
+                                            : 0}
                                 </div>
                             </CardContent>
                         </Card>
@@ -306,23 +435,31 @@ export function Dashboard() {
                             <CardDescription>Manage your events and view bookings</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <Tabs defaultValue="all">
+                            <Tabs
+                                value={orgTab}
+                                onValueChange={(v) => {
+                                    setOrgTab(v);
+                                    setOrgPage(0);
+                                }}
+                            >
                                 <TabsList className="mb-4">
-                                    <TabsTrigger value="all">All Events ({myEvents.length})</TabsTrigger>
+                                    <TabsTrigger value="all">
+                                        All Events ({organizerSummary?.eventCount ?? orgTotal})
+                                    </TabsTrigger>
                                     <TabsTrigger value="published">
-                                        Published ({myEvents.filter(e => e.status === 'PUBLISHED').length})
+                                        Published {orgTab === 'published' ? '(' +orgTotal + ')' : ''}
                                     </TabsTrigger>
                                     <TabsTrigger value="submitted">
-                                        Submitted ({myEvents.filter(e => e.status === 'SUBMITTED').length})
+                                        Submitted {orgTab === 'submitted' ? '(' + orgTotal + ')' : ''}
                                     </TabsTrigger>
                                     <TabsTrigger value="completed">
-                                        Completed ({myEvents.filter(e => e.status === 'COMPLETED').length})
+                                        Completed {orgTab === 'completed' ? '(' + orgTotal + ')' : ''}
                                     </TabsTrigger>
                                     <TabsTrigger value="draft">
-                                        Drafts ({myEvents.filter(e => e.status === 'DRAFT').length})
+                                        Drafts {orgTab === 'draft' ? '(' + orgTotal + ')' : ''}
                                     </TabsTrigger>
                                     <TabsTrigger value="rejected">
-                                        Rejected ({myEvents.filter(e => e.status === 'REJECTED' || e.status === 'CANCELLED').length})
+                                        Rejected {orgTab === 'rejected' ? '('+orgTotal+')' : ''}
                                     </TabsTrigger>
                                     {/* <TabsTrigger value="cancelled">
                                         Cancelled ({myEvents.filter(e => e.status === 'CANCELLED').length})
@@ -334,67 +471,87 @@ export function Dashboard() {
                                         events={myEvents}
                                         onDelete={handleDeleteEvent}
                                         onToggleStatus={handleToggleStatus}
-                                        getEventBookings={getEventBookings}
                                         navigate={navigate}
+                                        loading={orgLoading}
                                     />
                                 </TabsContent>
 
                                 <TabsContent value="published">
                                     <EventsList
-                                        events={myEvents.filter(e => e.status === 'PUBLISHED')}
+                                        events={myEvents}
                                         onDelete={handleDeleteEvent}
                                         onToggleStatus={handleToggleStatus}
-                                        getEventBookings={getEventBookings}
                                         navigate={navigate}
+                                        loading={orgLoading}
                                     />
                                 </TabsContent>
 
                                 <TabsContent value="draft">
                                     <EventsList
-                                        events={myEvents.filter(e => e.status === 'DRAFT')}
+                                        events={myEvents}
                                         onDelete={handleDeleteEvent}
                                         onToggleStatus={handleToggleStatus}
-                                        getEventBookings={getEventBookings}
                                         navigate={navigate}
+                                        loading={orgLoading}
                                     />
                                 </TabsContent>
                                 <TabsContent value="submitted">
                                     <EventsList
-                                        events={myEvents.filter(e => e.status === 'SUBMITTED')}
+                                        events={myEvents}
                                         onDelete={handleDeleteEvent}
                                         onToggleStatus={handleToggleStatus}
-                                        getEventBookings={getEventBookings}
                                         navigate={navigate}
+                                        loading={orgLoading}
                                     />
                                 </TabsContent>
-                                {/* <TabsContent value="cancelled">
-                                    <EventsList
-                                        events={myEvents.filter(e => e.status === 'CANCELLED')}
-                                        onDelete={handleDeleteEvent}
-                                        onToggleStatus={handleToggleStatus}
-                                        getEventBookings={getEventBookings}
-                                        navigate={navigate}
-                                    />
-                                </TabsContent> */}
                                 <TabsContent value="rejected">
                                     <EventsList
-                                        events={myEvents.filter(e => e.status === 'REJECTED' || e.status === 'CANCELLED')}
+                                        events={myEvents}
                                         onDelete={handleDeleteEvent}
                                         onToggleStatus={handleToggleStatus}
-                                        getEventBookings={getEventBookings}
                                         navigate={navigate}
+                                        loading={orgLoading}
                                     />
                                 </TabsContent>
                                 <TabsContent value="completed">
                                     <EventsList
-                                        events={myEvents.filter(e => e.status === 'COMPLETED')}
+                                        events={myEvents}
                                         onDelete={handleDeleteEvent}
                                         onToggleStatus={handleToggleStatus}
-                                        getEventBookings={getEventBookings}
                                         navigate={navigate}
+                                        loading={orgLoading}
                                     />
                                 </TabsContent>
                             </Tabs>
+                            {orgTotal > 0 && (
+                                <div className="flex items-center justify-between gap-4 pt-6 border-t mt-6">
+                                    <p className="text-sm text-gray-600">
+                                        Page {orgPage + 1} of {Math.max(1, orgTotalPages)} ({orgTotal} in this tab)
+                                    </p>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={orgLoading || orgPage <= 0}
+                                            onClick={() => setOrgPage((p) => p - 1)}
+                                        >
+                                            <ChevronLeft className="h-4 w-4" />
+                                            Prev
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={orgLoading || orgPage >= orgTotalPages - 1}
+                                            onClick={() => setOrgPage((p) => p + 1)}
+                                        >
+                                            Next
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </div>
@@ -402,14 +559,7 @@ export function Dashboard() {
         );
     }
 
-    else if (currentUser?.role === 'ADMIN') {
-        navigate('/admin');
-    }
-
-    else {
-        navigate("/login");
-    }
-
+    return null;
 }
 
 
@@ -419,9 +569,18 @@ function EventsList({
     events,
     onDelete,
     onToggleStatus,
-    getEventBookings,
-    navigate
-}: any) {
+    navigate,
+    loading,
+}: {
+    events: any[];
+    onDelete: (eventId: string) => void;
+    onToggleStatus: (eventId: string, currentStatus: string) => void;
+    navigate: (to: string) => void;
+    loading?: boolean;
+}) {
+    if (loading) {
+        return <div className="text-center py-12 text-gray-600">Loading events…</div>;
+    }
     if (events.length === 0) {
         return (
             <div className="text-center py-12">
@@ -434,13 +593,12 @@ function EventsList({
     return (
         <div className="space-y-4">
             {events.map((event: any) => {
-                const eventBookings = getEventBookings(event.eventId);
-                const revenue = event.ticketsSold * event.ticketPrice;
+                const revenue = (event.ticketsSold ?? 0) * (event.ticketPrice ?? 0);
 
                 return (
                     <div key={event.eventId} className="flex items-start gap-4 p-4 border rounded-lg">
                         <img
-                            src={event.imageUrl}
+                            src={resolveEventImageUrl(event.imageUrl)}
                             alt={event.eventName}
                             className="w-32 h-32 object-cover rounded"
                             onError={(e) => {
@@ -470,8 +628,8 @@ function EventsList({
                                     <div className="font-medium">${revenue.toFixed(2) || 0}</div>
                                 </div>
                                 <div>
-                                    <div className="text-gray-600">Bookings</div>
-                                    <div className="font-medium">{eventBookings.length}</div>
+                                    <div className="text-gray-600">Tickets sold</div>
+                                    <div className="font-medium">{event.ticketsSold ?? 0}</div>
                                 </div>
                             </div>
 
@@ -508,6 +666,14 @@ function EventsList({
                                     >
                                         Unpublish
                                     </Button>}
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => navigate(`/events/${event.eventId}/attendees`)}
+                                >
+                                    <Users className="h-4 w-4 mr-1" />
+                                    Attendees
+                                </Button>
                                 <Button
                                     size="sm"
                                     variant="outline"

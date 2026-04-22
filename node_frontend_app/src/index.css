@@ -30,8 +30,9 @@
 body {
   margin: 0;
   font-family: var(--font-family);
-  background-color: var(--bg-color);
-  color: var(--text-primary);
+  /* Use design tokens from tailwind.css so shadcn popovers, selects, and dropdowns inherit readable colors */
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

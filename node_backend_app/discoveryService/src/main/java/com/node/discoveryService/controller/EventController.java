@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import com.node.discoveryService.service.EventService;
 import com.node.discoveryService.model.Event;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 //import java.util.List;
 
 @RestController
@@ -21,10 +21,10 @@ public class EventController {
     @Autowired 
     private EventService eventService;
 
-    @GetMapping("/api/events/search")
+    @GetMapping("/browseEvents")
     public Page<Event> search(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size,
-                              @RequestParam(defaultValue = "dateTime") String sortBy,  @RequestParam(defaultValue = "asc") String sortDir,
-                              @RequestParam(required = false) String keyword, @RequestParam(required = false) String location, @RequestParam(required = false) LocalDateTime date, @RequestParam(required = false) String category) {
+                              @RequestParam(defaultValue = "eventStartDate") String sortBy,  @RequestParam(defaultValue = "asc") String sortDir,
+                              @RequestParam(required = false) String keyword, @RequestParam(required = false) String location, @RequestParam(required = false) LocalDate date, @RequestParam(required = false) String category) {
         
         Sort sort = sortDir.equalsIgnoreCase("Desc") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();                        
         Pageable pageable = PageRequest.of(page, size, sort);

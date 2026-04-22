@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { ArrowLeft, Save, Trash2, MapPin, X } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, MapPin, X, Upload, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
-import { runAPI } from '../api';
-import type { EventCategory } from '../types';
+import { runAPI, newTicketTypeRow, ticketTypeApiToDraft } from '../api';
+import type { EventCategory, TicketTypeDraft } from '../types';
+import { TicketTypesEditor } from '../components/TicketTypesEditor';
+import { storeEventCoverDataUrl, resolveEventImageUrl } from '@/lib/eventImageStorage';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -107,6 +109,109 @@ export function EditEvent() {
         }
     }, [event]);
 
+    const [ticketTypeRows, setTicketTypeRows] = useState<TicketTypeDraft[]>(() => [newTicketTypeRow()]);
+    const [ticketTypesLoaded, setTicketTypesLoaded] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [imageUrlDraft, setImageUrlDraft] = useState('');
+    const imageFileRef = useRef<HTMLInputElement>(null);
+
+    const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+
+    const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            toast.error('Please choose an image file');
+            e.target.value = '';
+            return;
+        }
+        if (file.size > MAX_IMAGE_BYTES) {
+            toast.error(`Image must be ${MAX_IMAGE_BYTES / (1024 * 1024)} MB or smaller, or use an https URL.`);
+            e.target.value = '';
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const dataUrl = reader.result as string;
+                const ref = storeEventCoverDataUrl(dataUrl);
+                setFormData((prev) => ({ ...prev, image: ref }));
+                setImageUrlDraft('');
+                toast.success('Image saved locally; reference will be stored when you save the event');
+            } catch (err: unknown) {
+                toast.error(err instanceof Error ? err.message : 'Could not store image');
+            }
+        };
+        reader.onerror = () => toast.error('Could not read that file');
+        reader.readAsDataURL(file);
+        e.target.value = '';
+    };
+
+    const applyImageUrl = () => {
+        const raw = imageUrlDraft.trim();
+        if (!raw) {
+            toast.error('Paste an image URL first');
+            return;
+        }
+        let parsed: URL;
+        try {
+            parsed = new URL(raw);
+        } catch {
+            toast.error('Invalid URL');
+            return;
+        }
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+            toast.error('URL must start with http:// or https://');
+            return;
+        }
+        setFormData((prev) => ({ ...prev, image: raw }));
+        toast.success('Image URL set');
+    };
+
+    useEffect(() => {
+        if (!id || !event?.eventId) return;
+        let cancelled = false;
+        setTicketTypesLoaded(false);
+        api.getTicketTypesForEvent(String(event.eventId))
+            .then((list) => {
+                if (cancelled) return;
+                if (list.length > 0) {
+                    setTicketTypeRows(list.map(ticketTypeApiToDraft));
+                } else {
+                    setTicketTypeRows([
+                        newTicketTypeRow({
+                            ticketType: 'General',
+                            price: event.ticketPrice ?? 0,
+                            totalQuantity: event.maxCapacity ?? 100,
+                            waitlistCapacity: event.waitlistCapacity ?? 0,
+                        }),
+                    ]);
+                }
+                setTicketTypesLoaded(true);
+            })
+            .catch((err: unknown) => {
+                if (!cancelled) {
+                    console.error(err);
+                    const msg =
+                        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+                        'Could not load ticket types. Start booking service (port 8082) and use the Vite dev proxy.';
+                    toast.error(msg);
+                    setTicketTypeRows([
+                        newTicketTypeRow({
+                            ticketType: 'General',
+                            price: event.ticketPrice ?? 0,
+                            totalQuantity: event.maxCapacity ?? 100,
+                            waitlistCapacity: event.waitlistCapacity ?? 0,
+                        }),
+                    ]);
+                    setTicketTypesLoaded(true);
+                }
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [id, event?.eventId]);
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -146,12 +251,19 @@ export function EditEvent() {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        const validTicketRows = ticketTypeRows.filter((r) => r.ticketType.trim() && r.totalQuantity > 0);
+        if (validTicketRows.length === 0) {
+            toast.error('Add at least one ticket type with a name and quantity');
+            return;
+        }
 
         const updatedEvent = {
             ...event,
             ...formData,
+            imageUrl: formData.image,
             ticketPrice: Number(formData.ticketPrice),
             maxCapacity: Number(formData.maxCapacity),
             eventStartInstant: `${formData.startDate}T${formData.startTime}:00Z`,
@@ -161,9 +273,25 @@ export function EditEvent() {
             tags: typeof formData.tags === 'string' ? formData.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
         };
 
-        api.updateEvent(event.eventId, updatedEvent);
-        toast.success('Event updated successfully!');
-        navigate('/dashboard');
+        setSaving(true);
+        try {
+            await api.updateEvent(event.eventId, updatedEvent);
+            try {
+                await api.syncTicketTypesForEvent(String(event.eventId), ticketTypeRows);
+            } catch (ttErr: any) {
+                console.error(ttErr);
+                toast.error(
+                    ttErr?.response?.data?.message ??
+                        'Event saved, but ticket types could not be synced. Check booking service and auth.'
+                );
+            }
+            toast.success('Event updated successfully!');
+            navigate('/dashboard');
+        } catch (err: any) {
+            toast.error(err?.response?.data?.message ?? 'Failed to update event');
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handleDelete = () => {
@@ -506,13 +634,25 @@ export function EditEvent() {
                                 </div>
                             </div>
 
+                            {ticketTypesLoaded ? (
+                                <TicketTypesEditor
+                                    rows={ticketTypeRows}
+                                    onChange={setTicketTypeRows}
+                                    eventPrice={formData.ticketPrice}
+                                    eventMaxCapacity={formData.maxCapacity}
+                                    eventWaitlistCapacity={formData.waitlistCapacity}
+                                />
+                            ) : (
+                                <p className="text-sm text-gray-500">Loading ticket types…</p>
+                            )}
+
                             {/* Pricing & Capacity */}
                             <div className="space-y-4">
                                 <h2 className="text-xl font-semibold">Pricing & Capacity</h2>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <Label htmlFor="price">Ticket Price ($) *</Label>
+                                        <Label htmlFor="price">Display ticket price ($) *</Label>
                                         <Input
                                             id="price"
                                             type="number"
@@ -522,7 +662,7 @@ export function EditEvent() {
                                             onChange={(e) => handleChange('ticketPrice', parseFloat(e.target.value) || 0)}
                                             required
                                         />
-                                        <p className="text-sm text-gray-500 mt-1">Enter 0 for free events</p>
+                                        <p className="text-sm text-gray-500 mt-1">Shown on listings; booking uses ticket types above</p>
                                     </div>
 
                                     <div className="space-y-2">
@@ -555,15 +695,86 @@ export function EditEvent() {
                             <div className="space-y-4">
                                 <h2 className="text-xl font-semibold">Additional Details</h2>
 
-                                <div>
-                                    <Label htmlFor="image">Event Image URL</Label>
-                                    <Input
-                                        id="image"
-                                        type="url"
-                                        value={formData.image}
-                                        onChange={(e) => handleChange('image', e.target.value)}
-                                        placeholder="https://example.com/image.jpg"
+                                <div className="space-y-3">
+                                    <div>
+                                        <Label>Event image</Label>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Upload stores pixels in <strong>localStorage</strong>; the database keeps a short{' '}
+                                            <code className="text-xs">lsimg:…</code> reference. Use https URL for images on other devices.
+                                        </p>
+                                    </div>
+                                    <input
+                                        ref={imageFileRef}
+                                        type="file"
+                                        accept="image/*"
+                                        className="sr-only"
+                                        aria-label="Choose event image file"
+                                        onChange={handleImageFileChange}
                                     />
+                                    {formData.image ? (
+                                        <div className="relative rounded-lg overflow-hidden border max-w-md">
+                                            <img
+                                                src={resolveEventImageUrl(formData.image)}
+                                                alt="Event preview"
+                                                className="w-full h-40 object-cover bg-muted"
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                size="sm"
+                                                className="absolute top-2 right-2"
+                                                onClick={() => {
+                                                    setFormData((prev) => ({ ...prev, image: '' }));
+                                                    setImageUrlDraft('');
+                                                }}
+                                            >
+                                                Remove
+                                            </Button>
+                                        </div>
+                                    ) : null}
+                                    <div className="rounded-lg border border-dashed border-gray-300 bg-muted/30 p-4 space-y-3">
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            onClick={() => imageFileRef.current?.click()}
+                                        >
+                                            <Upload className="h-4 w-4 mr-2" />
+                                            Choose image from device
+                                        </Button>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="edit-image-url" className="flex items-center gap-2">
+                                                <Link2 className="h-3.5 w-3.5" />
+                                                Or paste image URL
+                                            </Label>
+                                            <div className="flex flex-col sm:flex-row gap-2">
+                                                <Input
+                                                    id="edit-image-url"
+                                                    type="url"
+                                                    inputMode="url"
+                                                    placeholder="https://example.com/banner.jpg"
+                                                    value={imageUrlDraft}
+                                                    onChange={(e) => setImageUrlDraft(e.target.value)}
+                                                    className="flex-1"
+                                                />
+                                                <Button type="button" variant="default" className="shrink-0" onClick={applyImageUrl}>
+                                                    Apply URL
+                                                </Button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="image-ref" className="text-muted-foreground text-xs">
+                                                Stored value (reference or URL)
+                                            </Label>
+                                            <Input
+                                                id="image-ref"
+                                                type="text"
+                                                value={formData.image}
+                                                onChange={(e) => handleChange('image', e.target.value)}
+                                                placeholder="lsimg:… or https://…"
+                                                className="mt-1 font-mono text-sm"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div>
@@ -587,9 +798,9 @@ export function EditEvent() {
                                 >
                                     Cancel
                                 </Button>
-                                <Button type="submit" className="flex-1">
+                                <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" disabled={saving}>
                                     <Save className="h-4 w-4 mr-2" />
-                                    Save Changes
+                                    {saving ? 'Saving…' : 'Save Changes'}
                                 </Button>
                             </div>
                         </form>

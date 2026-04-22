@@ -27,7 +27,7 @@ export const mockEvents: Event[] = [
     eventPublishDate: '2026-01-15T10:00:00Z',
     eventTimeZone: 'America/Los_Angeles',
     updatedAt: null,
-    status: 'published',
+    status: 'PUBLISHED',
     tags: ['outdoor', 'festival', 'live-music'],
     createdAt: '2026-01-15T10:00:00Z'
   }

@@ -13,8 +13,8 @@ import lombok.Data;
 public class EventCategory {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long categoryId;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String categoryId;
 
     private String categoryName;
 

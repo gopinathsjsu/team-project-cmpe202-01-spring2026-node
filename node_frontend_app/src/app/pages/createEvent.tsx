@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router';
 
 import { Button } from '../components/ui/button';
@@ -7,11 +7,13 @@ import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { ArrowLeft, Plus, X, MapPin } from 'lucide-react';
+import { ArrowLeft, Plus, X, MapPin, Upload, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '../components/ui/badge';
-import { runAPI } from '../api';
-import type { Event, EventCategory } from '../types';
+import { runAPI, newTicketTypeRow } from '../api';
+import type { Event, EventCategory, TicketTypeDraft } from '../types';
+import { TicketTypesEditor } from '../components/TicketTypesEditor';
+import { storeEventCoverDataUrl, resolveEventImageUrl } from '@/lib/eventImageStorage';
 
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -63,6 +65,17 @@ export function CreateEvent() {
 
   const [tagInput, setTagInput] = useState('');
   const [selectKey, setSelectKey] = useState(0);
+  const [ticketTypeRows, setTicketTypeRows] = useState<TicketTypeDraft[]>(() => [
+    newTicketTypeRow({
+      ticketType: 'General',
+      price: 0,
+      totalQuantity: 100,
+      waitlistCapacity: 0,
+    }),
+  ]);
+  const [submitting, setSubmitting] = useState(false);
+  const [imageUrlDraft, setImageUrlDraft] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Map state
   const [mapPosition, setMapPosition] = useState<[number, number] | null>(null);
@@ -167,7 +180,7 @@ export function CreateEvent() {
     return null;
   }
 
-  const handleSubmit = (e: React.FormEvent, status: 'DRAFT' | 'SUBMITTED') => {
+  const handleSubmit = async (e: React.FormEvent, status: 'DRAFT' | 'SUBMITTED') => {
     e.preventDefault();
 
     if (!formData.eventName || formData.categories.length === 0 || !formData.startDate || !formData.startTime || !formData.endDate || !formData.endTime || !formData.eventTimeZone || !formData.location) {
@@ -176,6 +189,12 @@ export function CreateEvent() {
     }
     if (!currentUser?.id) {
       toast.error('Please login to create an event');
+      return;
+    }
+
+    const validTicketRows = ticketTypeRows.filter((r) => r.ticketType.trim() && r.totalQuantity > 0);
+    if (validTicketRows.length === 0) {
+      toast.error('Add at least one ticket type with a name and quantity');
       return;
     }
 
@@ -209,9 +228,42 @@ export function CreateEvent() {
       tags: formData.tags
     };
 
-    api.addEvent(newEvent);
-    toast.success(`Event ${status === 'DRAFT' ? 'saved as draft' : 'submitted'} successfully!`);
-    navigate('/dashboard');
+    setSubmitting(true);
+    try {
+      const created = await api.addEvent(newEvent);
+      const eventId = String(created?.eventId ?? (created as any)?.id ?? '');
+      if (!eventId || eventId === 'null') {
+        toast.error('Event created but no ID returned; ticket types were not saved.');
+        navigate('/dashboard');
+        return;
+      }
+
+      const items = validTicketRows.map((r) => ({
+        ticketType: r.ticketType.trim(),
+        description: r.description.trim() || undefined,
+        price: r.price,
+        totalQuantity: r.totalQuantity,
+        waitlistCapacity: r.waitlistCapacity ?? 0,
+      }));
+
+      try {
+        await api.assignTicketTypesToEvent(eventId, items);
+      } catch (ticketErr: any) {
+        console.error(ticketErr);
+        toast.error(
+          ticketErr?.response?.data?.message ??
+          'Event saved, but ticket types failed to sync. Edit the event to add them in the booking service.'
+        );
+      }
+
+      toast.success(`Event ${status === 'DRAFT' ? 'saved as draft' : 'submitted'} successfully!`);
+      navigate('/dashboard');
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.response?.data?.message ?? 'Failed to create event');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const addTag = () => {
@@ -231,15 +283,70 @@ export function CreateEvent() {
     }));
   };
 
+  const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2 MB — base64 in JSON can be large; use URL for bigger files
+
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose an image file (JPEG, PNG, WebP, GIF, etc.)');
+      e.target.value = '';
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      toast.error(`Image must be ${MAX_IMAGE_BYTES / (1024 * 1024)} MB or smaller, or paste a hosted image URL instead.`);
+      e.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const dataUrl = reader.result as string;
+        const ref = storeEventCoverDataUrl(dataUrl);
+        setFormData((prev) => ({ ...prev, image: ref }));
+        setImageUrlDraft('');
+        toast.success('Image saved locally; reference will be stored in the database');
+      } catch (err: any) {
+        toast.error(err?.message ?? 'Could not store image');
+      }
+    };
+    reader.onerror = () => {
+      toast.error('Could not read that file');
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const applyImageUrl = () => {
+    const raw = imageUrlDraft.trim();
+    if (!raw) {
+      toast.error('Paste an image URL first');
+      return;
+    }
+    let parsed: URL;
+    try {
+      parsed = new URL(raw);
+    } catch {
+      toast.error('Invalid URL');
+      return;
+    }
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      toast.error('URL must start with http:// or https://');
+      return;
+    }
+    setFormData((prev) => ({ ...prev, image: raw }));
+    toast.success('Image URL set');
+  };
+
   const handleImageSearch = () => {
-    // Placeholder for image selection
     const sampleImages = [
       'https://images.unsplash.com/photo-1492684223066-81342ee5ff30',
       'https://images.unsplash.com/photo-1505373877841-8d25f7d46678',
       'https://images.unsplash.com/photo-1511795409834-ef04bbd61622',
     ];
     const randomImage = sampleImages[Math.floor(Math.random() * sampleImages.length)];
-    setFormData(prev => ({ ...prev, image: randomImage }));
+    setFormData((prev) => ({ ...prev, image: randomImage }));
+    setImageUrlDraft(randomImage);
     toast.success('Sample image added');
   };
 
@@ -283,6 +390,7 @@ export function CreateEvent() {
                     <Textarea
                       id="description"
                       value={formData.eventDescription}
+                      maxLength={255}
                       onChange={(e) => setFormData(prev => ({ ...prev, eventDescription: e.target.value }))}
                       placeholder="Describe your event..."
                       rows={6}
@@ -459,10 +567,18 @@ export function CreateEvent() {
                   </div>
                 </div>
 
+                <TicketTypesEditor
+                  rows={ticketTypeRows}
+                  onChange={setTicketTypeRows}
+                  eventPrice={formData.price}
+                  eventMaxCapacity={formData.maxCapacity}
+                  eventWaitlistCapacity={formData.waitlistCapacity}
+                />
+
                 {/* Pricing & Capacity */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="price">Ticket Price ($)</Label>
+                    <Label htmlFor="price">Display ticket price ($)</Label>
                     <Input
                       id="price"
                       type="number"
@@ -472,7 +588,7 @@ export function CreateEvent() {
                       onChange={(e) => setFormData(prev => ({ ...prev, price: Number(e.target.value) }))}
                       placeholder="0.00"
                     />
-                    <p className="text-xs text-gray-500">Set to 0 for free events</p>
+                    <p className="text-xs text-gray-500">Shown on cards; actual checkout uses ticket types above</p>
                   </div>
 
                   <div className="space-y-2">
@@ -501,33 +617,83 @@ export function CreateEvent() {
                 </div>
 
                 {/* Image */}
-                <div className="space-y-2">
-                  <Label>Event Image</Label>
+                <div className="space-y-4">
+                  <div>
+                    <Label>Event image</Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Upload saves the image in <strong>localStorage</strong> and stores only a short reference (
+                      <code className="text-xs">lsimg:…</code>) in the database. Use a normal https URL if you need the image
+                      on other devices.
+                    </p>
+                  </div>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    aria-label="Choose event image file"
+                    onChange={handleImageFileChange}
+                  />
+
                   {formData.image ? (
-                    <div className="relative">
+                    <div className="relative rounded-lg overflow-hidden border">
                       <img
-                        src={formData.image}
+                        src={resolveEventImageUrl(formData.image)}
                         alt="Event preview"
-                        className="w-full h-48 object-cover rounded-lg"
+                        className="w-full h-48 object-cover bg-muted"
                       />
                       <Button
                         type="button"
                         variant="destructive"
                         size="sm"
                         className="absolute top-2 right-2"
-                        onClick={() => setFormData(prev => ({ ...prev, image: '' }))}
+                        onClick={() => {
+                          setFormData((prev) => ({ ...prev, image: '' }));
+                          setImageUrlDraft('');
+                        }}
                       >
                         Remove
                       </Button>
                     </div>
-                  ) : (
-                    <div className="border-2 border-dashed rounded-lg p-8 text-center">
-                      <p className="text-gray-600 mb-4">Add an image for your event</p>
+                  ) : null}
+
+                  <div className="rounded-lg border border-dashed border-gray-300 bg-muted/30 p-4 space-y-4">
+                    <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Choose image from device
+                      </Button>
                       <Button type="button" variant="outline" onClick={handleImageSearch}>
-                        Add Sample Image
+                        Use sample image
                       </Button>
                     </div>
-                  )}
+
+                    <div className="space-y-2">
+                      <Label htmlFor="image-url" className="flex items-center gap-2">
+                        <Link2 className="h-3.5 w-3.5" />
+                        Or paste image URL
+                      </Label>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <Input
+                          id="image-url"
+                          type="url"
+                          inputMode="url"
+                          placeholder="https://cdn.example.com/my-event-banner.jpg"
+                          value={imageUrlDraft}
+                          onChange={(e) => setImageUrlDraft(e.target.value)}
+                          className="flex-1"
+                        />
+                        <Button type="button" variant="default" className="shrink-0" onClick={applyImageUrl}>
+                          Apply URL
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Tags */}
@@ -565,21 +731,24 @@ export function CreateEvent() {
 
                 {/* Actions */}
                 <div className="flex gap-3 pt-6 border-t">
-                  <Button
+                  {/*<Button
                     type="button"
                     variant="outline"
                     onClick={(e) => handleSubmit(e, 'DRAFT')}
                     className="flex-1"
+                    disabled={submitting}
                   >
                     Save as Draft
-                  </Button>
+                  </Button-->*/}
+
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="default"
                     onClick={(e) => handleSubmit(e, 'SUBMITTED')}
-                    className="flex-1"
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                    disabled={submitting}
                   >
-                    Submit for Review
+                    {submitting ? 'Saving…' : 'Submit for Review'}
                   </Button>
                 </div>
               </form>

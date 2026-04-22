@@ -1,20 +1,32 @@
 package com.node.eventServices.model.events;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
 @Entity
+@Table(name = "events")
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Events {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long eventId;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String eventId;
 
+    @NotBlank(message = "Event name is required")
     private String eventName;
 
     private String eventDescription;
@@ -27,6 +39,7 @@ public class Events {
     )
     private List<EventCategory> categories;
 
+    @Positive(message = "Max capacity must be positive")
     private Long maxCapacity;
 
     private Long waitlistCapacity;
@@ -35,23 +48,22 @@ public class Events {
     @JoinColumn(name = "location_id")
     private EventLocation eventLocation;
 
-    private String ticketPrice;
+    @Column(precision = 10, scale = 2)
+    private BigDecimal ticketPrice;
 
     private String imageUrl;
 
-    // Keep legacy LocalDate fields for compatibility
     private LocalDate eventStartDate;
 
     private LocalDate eventEndDate;
 
-    // Store absolute instants (UTC) for unambiguous scheduling
+    @NotNull(message = "Event start time is required")
     private Instant eventStartInstant;
 
     private Instant eventEndInstant;
 
     private Instant eventPublishInstant;
 
-    // Store the organizer's IANA timezone (e.g. "America/Los_Angeles") for display and calendar exports
     private String eventTimeZone;
 
     private LocalDate createdAt;
@@ -60,21 +72,38 @@ public class Events {
 
     private LocalDate eventPublishDate;
 
-    private Long eventOwnerId;
+    @NotNull(message = "Event owner is required")
+    private String eventOwnerId;
 
-    private Long approverId;
+    private String approverId;
 
     @Enumerated(EnumType.STRING)
-    private EventStatus status; // SUBMITTED, DRAFT, APPROVED, REJECTED, CANCELLED
+    @NotNull
+    @Builder.Default
+    private EventStatus status = EventStatus.DRAFT;
+
+    public void transitionTo(EventStatus newStatus) {
+        this.status = this.status.transitionTo(newStatus);
+    }
+    /*
+    public void setStatus(String newStatus) {
+        this.status.changeStatus(newStatus);
+    }
+
+    public String getStatus() {
+        return this.status.getCurrentStatus();
+    }*/
 
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDate.now();
+        if (status == null) {
+            status = EventStatus.DRAFT;
+        }
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDate.now();
-
     }
 }
