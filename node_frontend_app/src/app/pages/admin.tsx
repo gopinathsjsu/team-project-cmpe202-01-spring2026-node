@@ -23,14 +23,22 @@ import {
     Ban,
     CheckCircle,
     AlertTriangle,
+<<<<<<< HEAD
     ChevronLeft,
     ChevronRight,
+=======
+    UserPlus,
+    UserMinus,
+    UserX,
+    RotateCcw
+>>>>>>> b896717 (Updated Admin actions)
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 import { runAPI } from '../api';
 import { resolveEventImageUrl } from '@/lib/eventImageStorage';
+<<<<<<< HEAD
 import type { AdminUserRow, BookingAdminMetrics, Event, EventAdminMetrics } from '../types';
 
 const PAGE_SIZE = 10;
@@ -89,6 +97,14 @@ function tabToEventStatus(tab: string): string | null {
             return null;
     }
 }
+=======
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
+>>>>>>> b896717 (Updated Admin actions)
 
 export function AdminPanel() {
     const navigate = useNavigate();
@@ -105,6 +121,7 @@ export function AdminPanel() {
     const [eventsLoading, setEventsLoading] = useState(false);
 
     const [searchQuery, setSearchQuery] = useState('');
+<<<<<<< HEAD
     const [debouncedEventSearch, setDebouncedEventSearch] = useState('');
     const [activeEventsTab, setActiveEventsTab] = useState('all');
 
@@ -261,6 +278,32 @@ export function AdminPanel() {
             };
         });
     }, [bookings]);
+=======
+    const [usersPage, setUsersPage] = useState(0);
+    const [usersPageSize] = useState(20);
+    const [usersData, setUsersData] = useState<{
+        users: Array<{
+            id: string;
+            email: string;
+            username?: string;
+            firstName?: string;
+            lastName?: string;
+            active?: boolean;
+            role: 'ATTENDEE' | 'ORGANIZER' | 'ADMIN';
+        }>;
+        page: number;
+        totalPages: number;
+        totalElements: number;
+        hasNext: boolean;
+    }>({ users: [], page: 0, totalPages: 0, totalElements: 0, hasNext: false });
+    const [newAdmin, setNewAdmin] = useState({
+        email: '',
+        password: '',
+        username: '',
+        firstName: '',
+        lastName: '',
+    });
+>>>>>>> b896717 (Updated Admin actions)
 
     if (currentUser?.role !== 'ADMIN') {
         return (
@@ -321,6 +364,108 @@ export function AdminPanel() {
         }).catch(() => toast.error('Failed to update event'));
     };
 
+<<<<<<< HEAD
+=======
+    const filteredEvents = events.filter(event =>
+        event?.eventName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        event?.eventOwnerName?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const refreshUsers = (page = usersPage) => {
+        api.getAdminUsers(page, usersPageSize)
+            .then((data) => {
+                setUsersData({
+                    users: data.users ?? [],
+                    page: data.page ?? 0,
+                    totalPages: data.totalPages ?? 0,
+                    totalElements: data.totalElements ?? 0,
+                    hasNext: !!data.hasNext,
+                });
+                setUsersPage(data.page ?? 0);
+            })
+            .catch(() => toast.error('Failed to load users'));
+    };
+
+    useEffect(() => {
+        refreshUsers(0);
+    }, []);
+
+    const handleCreateAdmin = () => {
+        if (!newAdmin.email.trim() || !newAdmin.password.trim()) {
+            toast.error('Email and password are required');
+            return;
+        }
+        api.createAdminUser({
+            email: newAdmin.email.trim(),
+            password: newAdmin.password,
+            username: newAdmin.username.trim() || undefined,
+            firstName: newAdmin.firstName.trim() || undefined,
+            lastName: newAdmin.lastName.trim() || undefined,
+        })
+            .then(() => {
+                toast.success('Admin user created');
+                setNewAdmin({ email: '', password: '', username: '', firstName: '', lastName: '' });
+                refreshUsers(0);
+            })
+            .catch((err: unknown) => {
+                const message = err instanceof Error ? err.message : 'Failed to create admin';
+                toast.error(message);
+            });
+    };
+
+    const handleRemoveAdmin = (userId: string, email: string) => {
+        if (!confirm(`Remove admin role for ${email}?`)) return;
+        api.removeAdminUser(userId)
+            .then(() => {
+                toast.success('Admin role removed');
+                refreshUsers(usersData.page);
+            })
+            .catch((err: unknown) => {
+                const message = err instanceof Error ? err.message : 'Failed to remove admin role';
+                toast.error(message);
+            });
+    };
+
+    const handleDeactivateUser = (userId: string, email: string) => {
+        if (!confirm(`Deactivate user ${email}? They will no longer be able to log in.`)) return;
+        api.deactivateUser(userId)
+            .then(() => {
+                toast.success('User deactivated');
+                refreshUsers(usersData.page);
+            })
+            .catch((err: unknown) => {
+                const message = err instanceof Error ? err.message : 'Failed to deactivate user';
+                toast.error(message);
+            });
+    };
+
+    const handleDeleteUser = (userId: string, email: string) => {
+        if (!confirm(`Permanently delete user ${email}? This cannot be undone.`)) return;
+        api.deleteManagedUser(userId)
+            .then(() => {
+                toast.success('User deleted');
+                refreshUsers(usersData.page);
+            })
+            .catch((err: unknown) => {
+                const message = err instanceof Error ? err.message : 'Failed to delete user';
+                toast.error(message);
+            });
+    };
+
+    const handleReactivateUser = (userId: string, email: string) => {
+        if (!confirm(`Reactivate user ${email}? They will be able to log in again.`)) return;
+        api.reactivateUser(userId)
+            .then(() => {
+                toast.success('User reactivated');
+                refreshUsers(usersData.page);
+            })
+            .catch((err: unknown) => {
+                const message = err instanceof Error ? err.message : 'Failed to reactivate user';
+                toast.error(message);
+            });
+    };
+
+>>>>>>> b896717 (Updated Admin actions)
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="container mx-auto px-4 py-8">
@@ -630,6 +775,114 @@ export function AdminPanel() {
                             onPageChange={setUsersPage}
                             disabled={usersLoading}
                         />
+                    </CardContent>
+                </Card>
+
+                <Card className="mt-8">
+                    <CardHeader>
+                        <CardTitle>Admin User Management</CardTitle>
+                        <CardDescription>Create admins and browse users with pagination</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-6">
+                            <Input placeholder="First name" value={newAdmin.firstName} onChange={(e) => setNewAdmin((prev) => ({ ...prev, firstName: e.target.value }))} />
+                            <Input placeholder="Last name" value={newAdmin.lastName} onChange={(e) => setNewAdmin((prev) => ({ ...prev, lastName: e.target.value }))} />
+                            <Input placeholder="Username" value={newAdmin.username} onChange={(e) => setNewAdmin((prev) => ({ ...prev, username: e.target.value }))} />
+                            <Input type="email" placeholder="Email" value={newAdmin.email} onChange={(e) => setNewAdmin((prev) => ({ ...prev, email: e.target.value }))} />
+                            <Input type="password" placeholder="Password" value={newAdmin.password} onChange={(e) => setNewAdmin((prev) => ({ ...prev, password: e.target.value }))} />
+                        </div>
+                        <div className="flex justify-end mb-6">
+                            <Button onClick={handleCreateAdmin}>
+                                <UserPlus className="h-4 w-4 mr-2" />
+                                Create Admin
+                            </Button>
+                        </div>
+
+                        <div className="space-y-3">
+                            {usersData.users.map((user) => (
+                                <div key={user.id} className="flex items-center justify-between border rounded-lg p-3">
+                                    <div>
+                                        <div className="font-medium">{`${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.username || user.email}</div>
+                                        <div className="text-sm text-gray-600">{user.email}</div>
+                                        {user.username && <div className="text-xs text-gray-500">@{user.username}</div>}
+                                        {user.active === false && <div className="text-xs text-red-600">Deactivated</div>}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Badge variant={user.role === 'ADMIN' ? 'default' : 'secondary'}>{user.role}</Badge>
+                                        {user.role === 'ADMIN' && user.id !== currentUser?.id && (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="text-red-600 border-red-300 hover:bg-red-50"
+                                                onClick={() => handleRemoveAdmin(user.id, user.email)}
+                                            >
+                                                <UserMinus className="h-4 w-4 mr-1" />
+                                                Remove Admin
+                                            </Button>
+                                        )}
+                                        {user.role !== 'ADMIN' && user.id !== currentUser?.id && (
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="outline" size="sm">Actions</Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    {user.active !== false && (
+                                                        <DropdownMenuItem
+                                                            className="text-amber-700"
+                                                            onClick={() => handleDeactivateUser(user.id, user.email)}
+                                                        >
+                                                            <UserX className="h-4 w-4 mr-2" />
+                                                            Deactivate
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    {user.active === false && (
+                                                        <DropdownMenuItem
+                                                            className="text-green-700"
+                                                            onClick={() => handleReactivateUser(user.id, user.email)}
+                                                        >
+                                                            <RotateCcw className="h-4 w-4 mr-2" />
+                                                            Reactivate
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    <DropdownMenuItem
+                                                        className="text-red-600"
+                                                        onClick={() => handleDeleteUser(user.id, user.email)}
+                                                    >
+                                                        <Ban className="h-4 w-4 mr-2" />
+                                                        Delete User
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                            {usersData.users.length === 0 && (
+                                <div className="text-center text-gray-500 py-6">No users found</div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center justify-between mt-6">
+                            <p className="text-sm text-gray-600">
+                                Page {usersData.page + 1} of {Math.max(usersData.totalPages, 1)} ({usersData.totalElements} users)
+                            </p>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    disabled={usersData.page <= 0}
+                                    onClick={() => refreshUsers(Math.max(usersData.page - 1, 0))}
+                                >
+                                    Previous
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    disabled={!usersData.hasNext}
+                                    onClick={() => refreshUsers(usersData.page + 1)}
+                                >
+                                    Next
+                                </Button>
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
             </div>

@@ -1,5 +1,6 @@
 //  this file will communicate with backend api's using http calls
 import axios from 'axios';
+<<<<<<< HEAD
 import type {
   AdminUserRow,
   Booking,
@@ -63,6 +64,9 @@ function mapBookingResponseForUserToUserBooking(d: Record<string, unknown>): Use
     eventTimeZone: String(d.eventTimeZone ?? ''),
   };
 }
+=======
+import type { Event, Booking, User, EventCategory, TicketTypeDraft, TicketTypeApi, UserBooking, Profile, AdminUsersPage } from './types';
+>>>>>>> b896717 (Updated Admin actions)
 
 function normalizeTicketTypeApi(raw: unknown): TicketTypeApi | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -96,6 +100,34 @@ type StoredUser = User & {
 
 let refreshPromise: Promise<string> | null = null;
 
+type RegisterPayload = {
+  email: string;
+  password: string;
+  role: 'ATTENDEE' | 'ORGANIZER';
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+};
+
+type UpdateProfilePayload = {
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  avatarUrl?: string;
+  bio?: string;
+  location?: string;
+  timezone?: string;
+};
+
+type CreateAdminPayload = {
+  email: string;
+  password: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+};
+
 function mapBackendRole(role: unknown): User['role'] {
   if (role === 'ORGANIZER' || role === 'ADMIN') return role;
   return 'USER';
@@ -114,6 +146,20 @@ function readStoredUser(): StoredUser | null {
 
 function writeStoredUser(user: StoredUser): void {
   localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+}
+
+function buildDisplayName(user: {
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  email?: string;
+}): string {
+  const first = user.firstName?.trim() ?? '';
+  const last = user.lastName?.trim() ?? '';
+  const fullName = `${first} ${last}`.trim();
+  if (fullName) return fullName;
+  if (user.username) return user.username;
+  return user.email ?? '';
 }
 
 // Add interceptor to include token
@@ -198,11 +244,17 @@ export function runAPI() {
     login: async (email: string, password: string): Promise<User> => {
       const response = await axios.post(`${API_BASE_URL}/auth/login`, { email, password });
       const data = response.data;
+      const backendUser = data.user ?? {};
       const authUser: StoredUser = {
-        id: data.user?.id,
-        name: data.user?.username || data.user?.email || email,
-        email: data.user?.email || email,
-        role: mapBackendRole(data.user?.role),
+        id: backendUser.id,
+        name: buildDisplayName(backendUser),
+        email: backendUser.email || email,
+        username: backendUser.username,
+        firstName: backendUser.firstName,
+        lastName: backendUser.lastName,
+        avatarUrl: backendUser.avatarUrl,
+        avatar: backendUser.avatarUrl,
+        role: mapBackendRole(backendUser.role),
         token: data.accessToken,
         refreshToken: data.refreshToken,
       };
@@ -210,14 +262,25 @@ export function runAPI() {
       return authUser;
     },
 
-    register: async (user: any): Promise<User> => {
+    register: async (user: RegisterPayload): Promise<User> => {
       const response = await axios.post(`${API_BASE_URL}/auth/register`, user);
       const data = response.data;
+      const backendUser = data.user ?? {};
       const authUser: StoredUser = {
-        id: data.user?.id,
-        name: data.user?.username || user.name || data.user?.email || user.email,
-        email: data.user?.email || user.email,
-        role: mapBackendRole(data.user?.role),
+        id: backendUser.id,
+        name: buildDisplayName({
+          firstName: backendUser.firstName ?? user.firstName,
+          lastName: backendUser.lastName ?? user.lastName,
+          username: backendUser.username ?? user.username,
+          email: backendUser.email ?? user.email,
+        }),
+        email: backendUser.email || user.email,
+        username: backendUser.username ?? user.username,
+        firstName: backendUser.firstName ?? user.firstName,
+        lastName: backendUser.lastName ?? user.lastName,
+        avatarUrl: backendUser.avatarUrl,
+        avatar: backendUser.avatarUrl,
+        role: mapBackendRole(backendUser.role),
         token: data.accessToken,
         refreshToken: data.refreshToken,
       };
@@ -575,6 +638,71 @@ export function runAPI() {
     },
     deleteUser: async (id: string): Promise<void> => {
       await axios.delete(`${API_BASE_URL}/users/${id}`);
+    },
+
+    // Profile
+    getMyProfile: async (): Promise<Profile> => {
+      const response = await axios.get(`${API_BASE_URL}/me`);
+      return response.data;
+    },
+    updateMyProfile: async (payload: UpdateProfilePayload): Promise<Profile> => {
+      const response = await axios.patch(`${API_BASE_URL}/me`, payload);
+      return response.data;
+    },
+
+    // Admin user management
+    getAdminUsers: async (page = 0, size = 20): Promise<AdminUsersPage> => {
+      const response = await axios.get(`${API_BASE_URL}/admin/users?page=${page}&size=${size}`);
+      return response.data;
+    },
+    createAdminUser: async (payload: CreateAdminPayload): Promise<{
+      id: string;
+      email: string;
+      username?: string;
+      firstName?: string;
+      lastName?: string;
+      avatarUrl?: string;
+      active?: boolean;
+      role: 'ATTENDEE' | 'ORGANIZER' | 'ADMIN';
+    }> => {
+      const response = await axios.post(`${API_BASE_URL}/admin/users/admin`, payload);
+      return response.data;
+    },
+    removeAdminUser: async (userId: string): Promise<{ message: string }> => {
+      const response = await axios.delete(`${API_BASE_URL}/admin/users/admin/${userId}`);
+      return response.data;
+    },
+    deactivateUser: async (userId: string): Promise<{ message: string }> => {
+      const response = await axios.delete(`${API_BASE_URL}/admin/users/${userId}`);
+      return response.data;
+    },
+    reactivateUser: async (userId: string): Promise<{ message: string }> => {
+      const response = await axios.patch(`${API_BASE_URL}/admin/users/${userId}/reactivate`);
+      return response.data;
+    },
+    deleteManagedUser: async (userId: string): Promise<{ message: string }> => {
+      const response = await axios.delete(`${API_BASE_URL}/admin/users/${userId}/hard-delete`);
+      return response.data;
+    },
+    bootstrapAdmin: async (payload: CreateAdminPayload): Promise<User> => {
+      const response = await axios.post(`${API_BASE_URL}/auth/bootstrap-admin`, payload);
+      const data = response.data;
+      const backendUser = data.user ?? {};
+      const authUser: StoredUser = {
+        id: backendUser.id,
+        name: buildDisplayName(backendUser),
+        email: backendUser.email || payload.email,
+        username: backendUser.username,
+        firstName: backendUser.firstName,
+        lastName: backendUser.lastName,
+        avatarUrl: backendUser.avatarUrl,
+        avatar: backendUser.avatarUrl,
+        role: mapBackendRole(backendUser.role),
+        token: data.accessToken,
+        refreshToken: data.refreshToken,
+      };
+      writeStoredUser(authUser);
+      return authUser;
     },
 
     /** Booking service: ticket types for an event (requires JWT when booking service enforces auth) */

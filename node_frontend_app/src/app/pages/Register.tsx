@@ -13,7 +13,9 @@ export function Register() {
   const navigate = useNavigate();
   const { setCurrentUser } = useAuth();
   const api = runAPI();
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'ATTENDEE' | 'ORGANIZER'>('ATTENDEE');
@@ -21,14 +23,16 @@ export function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password.trim()) {
-      toast.error('Email and password are required');
+    if (!email.trim() || !password.trim() || !username.trim()) {
+      toast.error('Username, email and password are required');
       return;
     }
     try {
       setSubmitting(true);
       const user = await api.register({
-        name,
+        firstName: firstName.trim() || undefined,
+        lastName: lastName.trim() || undefined,
+        username: username.trim(),
         email,
         password,
         role,
@@ -37,7 +41,15 @@ export function Register() {
       toast.success('Account created successfully');
       navigate('/dashboard');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Registration failed';
+      const message =
+        typeof err === 'object' &&
+        err !== null &&
+        'response' in err &&
+        typeof (err as { response?: { data?: { message?: string } } }).response?.data?.message === 'string'
+          ? (err as { response?: { data?: { message?: string } } }).response!.data!.message!
+          : err instanceof Error
+            ? err.message
+            : 'Registration failed';
       toast.error(message);
     } finally {
       setSubmitting(false);
@@ -53,14 +65,37 @@ export function Register() {
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="John"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Doe"
+                />
+              </div>
+            </div>
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="username">Username</Label>
               <Input
-                id="name"
+                id="username"
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your name"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="john.doe"
+                required
               />
             </div>
             <div className="space-y-2">

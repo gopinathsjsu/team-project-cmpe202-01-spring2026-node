@@ -302,7 +302,7 @@ public class EventManagementServiceImpl implements EventManagementService {
 
     private String findOrganizerNameById(String eventOwnerId) {
         return userRepository.findById(eventOwnerId)
-                .map(User::getUsername)
+                .map(User::getUserName)
                 .orElse("Unknown Organizer");
     }
 
@@ -321,7 +321,7 @@ public class EventManagementServiceImpl implements EventManagementService {
 
     private EventInfoDto convertToDto(Events event) {
         String ownerName = userRepository.findById(event.getEventOwnerId())
-                .map(User::getUsername)
+                .map(User::getUserName)
                 .orElse("Unknown");
         Long ticketsSold = findTicketsSoldForEvent(event.getEventId());
         log.info("Tickets sold for event id={}: {}", event.getEventId(), ticketsSold);
