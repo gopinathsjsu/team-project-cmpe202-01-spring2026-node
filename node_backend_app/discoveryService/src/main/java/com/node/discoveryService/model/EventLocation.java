@@ -9,8 +9,8 @@ import jakarta.persistence.GenerationType;
 @Entity
 public class EventLocation {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long locationId;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String locationId;
     
     private String locationName;
     private String locationAddress;
