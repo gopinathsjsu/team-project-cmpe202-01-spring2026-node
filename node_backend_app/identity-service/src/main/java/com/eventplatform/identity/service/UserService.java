@@ -30,16 +30,23 @@ public class UserService {
         ProfileResponse.ProfileResponseBuilder builder = ProfileResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
+                .username(user.getUsername())
                 .role(user.getRole())
                 .active(user.isActive())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .phone(user.getPhone())
+                .avatarUrl(user.getAvatarUrl())
+                .bio(user.getBio())
+                .location(user.getLocation())
                 .createdAt(user.getCreatedAt());
 
         if (profile != null) {
-            builder.firstName(profile.getFirstName())
-                    .lastName(profile.getLastName())
-                    .phone(profile.getPhone())
-                    .avatarUrl(profile.getAvatarUrl())
-                    .timezone(profile.getTimezone());
+            if (user.getFirstName() == null) builder.firstName(profile.getFirstName());
+            if (user.getLastName() == null) builder.lastName(profile.getLastName());
+            if (user.getPhone() == null) builder.phone(profile.getPhone());
+            if (user.getAvatarUrl() == null) builder.avatarUrl(profile.getAvatarUrl());
+            builder.timezone(profile.getTimezone());
         }
 
         return builder.build();
@@ -55,12 +62,35 @@ public class UserService {
             profile = UserProfile.builder().user(user).build();
         }
 
-        if (request.getFirstName() != null) profile.setFirstName(request.getFirstName());
-        if (request.getLastName() != null) profile.setLastName(request.getLastName());
-        if (request.getPhone() != null) profile.setPhone(request.getPhone());
-        if (request.getAvatarUrl() != null) profile.setAvatarUrl(request.getAvatarUrl());
+        if (request.getUsername() != null) {
+            String username = request.getUsername().trim();
+            boolean changed = user.getUsername() == null || !username.equalsIgnoreCase(user.getUsername());
+            if (changed && userRepository.existsByUsername(username)) {
+                throw new IllegalArgumentException("Username is already taken");
+            }
+            user.setUsername(username);
+        }
+        if (request.getFirstName() != null) {
+            user.setFirstName(request.getFirstName());
+            profile.setFirstName(request.getFirstName());
+        }
+        if (request.getLastName() != null) {
+            user.setLastName(request.getLastName());
+            profile.setLastName(request.getLastName());
+        }
+        if (request.getPhone() != null) {
+            user.setPhone(request.getPhone());
+            profile.setPhone(request.getPhone());
+        }
+        if (request.getAvatarUrl() != null) {
+            user.setAvatarUrl(request.getAvatarUrl());
+            profile.setAvatarUrl(request.getAvatarUrl());
+        }
+        if (request.getBio() != null) user.setBio(request.getBio());
+        if (request.getLocation() != null) user.setLocation(request.getLocation());
         if (request.getTimezone() != null) profile.setTimezone(request.getTimezone());
 
+        userRepository.save(user);
         userProfileRepository.save(profile);
 
         return getProfile(userId);

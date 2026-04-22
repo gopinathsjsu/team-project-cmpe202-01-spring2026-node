@@ -4,10 +4,48 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
   token: string;
   refreshToken?: string;
   role: UserRole;
   avatar?: string;
+  avatarUrl?: string;
+}
+
+export interface Profile {
+  id: string;
+  email: string;
+  username?: string;
+  role: 'ATTENDEE' | 'ORGANIZER' | 'ADMIN';
+  active: boolean;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  avatarUrl?: string;
+  bio?: string;
+  location?: string;
+  timezone?: string;
+  createdAt?: string;
+}
+
+export interface AdminUsersPage {
+  users: Array<{
+    id: string;
+    email: string;
+    username?: string;
+    firstName?: string;
+    lastName?: string;
+    avatarUrl?: string;
+    active?: boolean;
+    role: 'ATTENDEE' | 'ORGANIZER' | 'ADMIN';
+  }>;
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  hasNext: boolean;
 }
 
 export interface EventCategory {

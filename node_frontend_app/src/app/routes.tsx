@@ -13,6 +13,7 @@ import { Profile } from './pages/profile';
 import { AttendeesPage } from './pages/attendees';
 import { ViewBooking } from './pages/viewBooking';
 import { ContactPage } from './pages/contact';
+import { BootstrapAdmin } from './pages/BootstrapAdmin';
 
 export default function AppRoutes() {
     return (
@@ -20,6 +21,7 @@ export default function AppRoutes() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/bootstrap-admin" element={<BootstrapAdmin />} />
             <Route
                 path="/dashboard"
                 element={
