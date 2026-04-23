@@ -2,6 +2,7 @@ package com.eventplatform.identity.service;
 
 import com.eventplatform.identity.dto.request.UpdateProfileRequest;
 import com.eventplatform.identity.dto.response.ProfileResponse;
+import com.eventplatform.identity.dto.response.UserResponse;
 import com.eventplatform.identity.entity.User;
 import com.eventplatform.identity.entity.UserProfile;
 import com.eventplatform.identity.exception.EntityNotFoundException;
@@ -52,6 +53,21 @@ public class UserService {
         return builder.build();
     }
 
+    @Transactional(readOnly = true)
+    public UserResponse getUserById(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User", userId));
+        return toUserResponse(user);
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse getUserByEmail(String email) {
+        String normalizedEmail = email == null ? "" : email.trim().toLowerCase();
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new EntityNotFoundException("User", normalizedEmail));
+        return toUserResponse(user);
+    }
+
     @Transactional
     public ProfileResponse updateProfile(UUID userId, UpdateProfileRequest request) {
         User user = userRepository.findById(userId)
@@ -94,5 +110,18 @@ public class UserService {
         userProfileRepository.save(profile);
 
         return getProfile(userId);
+    }
+
+    private UserResponse toUserResponse(User user) {
+        return UserResponse.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .username(user.getUsername())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .avatarUrl(user.getAvatarUrl())
+                .active(user.isActive())
+                .role(user.getRole())
+                .build();
     }
 }
