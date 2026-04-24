@@ -144,5 +144,24 @@ services:
       kafka:
         condition: service_healthy
 
+  discovery-service:
+    build:
+      context: ./discoveryService
+      dockerfile: Dockerfile
+    container_name: discovery-service
+    ports:
+      - "8084:8084"
+    environment:
+      server_port: 8084
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/event_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    depends_on:
+      postgres:
+        condition: service_healthy
+      events-service:
+        condition: service_started
+
 volumes:
   postgres_data:
