@@ -37,4 +37,7 @@ public class UpdateProfileRequest {
 
     @Size(max = 50, message = "Timezone must be at most 50 characters")
     private String timezone;
+
+    @Size(max = 1000, message = "Interest must be at most 1000 characters")
+    private String interest;
 }

@@ -24,11 +24,14 @@ public class EmailNotificationChannel implements NotificationChannel {
     @Override
     public void send(NotificationEvent event, String userEmail, String fcmToken) {
         try {
-            switch (event) {
-                case BookingConfirmedEvent e  -> sendEmail(userEmail, "Booking Confirmed — " + e.getEventName(), "booking-confirmation", buildContext(e));
-                case BookingPendingEvent e    -> sendEmail(userEmail, "You're on the Waitlist — " + e.getEventName(), "booking-pending", buildContext(e));
-                case BookingCancelledEvent e  -> sendEmail(userEmail, "Booking Cancelled — " + e.getEventName(), "booking-cancelled", buildContext(e));
-                case NewEventPublishedEvent e -> sendEmail(userEmail, "New Event: " + e.getEventName(), "new-event", buildContext(e));
+            if (event instanceof BookingConfirmedEvent e) {
+                sendEmail(userEmail, "Booking Confirmed — " + e.getEventName(), "booking-confirmation", buildContext(e));
+            } else if (event instanceof BookingPendingEvent e) {
+                sendEmail(userEmail, "You're on the Waitlist — " + e.getEventName(), "booking-pending", buildContext(e));
+            } else if (event instanceof BookingCancelledEvent e) {
+                sendEmail(userEmail, "Booking Cancelled — " + e.getEventName(), "booking-cancelled", buildContext(e));
+            } else if (event instanceof NewEventPublishedEvent e) {
+                sendEmail(userEmail, "New Event: " + e.getEventName(), "new-event", buildContext(e));
             }
         } catch (Exception ex) {
             log.error("Failed to send email to {}: {}", userEmail, ex.getMessage());

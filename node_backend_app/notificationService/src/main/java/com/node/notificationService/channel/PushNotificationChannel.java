@@ -34,23 +34,30 @@ public class PushNotificationChannel implements NotificationChannel {
     }
 
     private String[] resolvePayload(NotificationEvent event) {
-        return switch (event) {
-            case BookingConfirmedEvent e  -> new String[]{
-                "Booking Confirmed!",
-                "You're registered for " + e.getEventName() + " (" + e.getTicketQuantity() + " ticket(s))"
+        if (event instanceof BookingConfirmedEvent e) {
+            return new String[]{
+                    "Booking Confirmed!",
+                    "You're registered for " + e.getEventName() + " (" + e.getTicketQuantity() + " ticket(s))"
             };
-            case BookingPendingEvent e    -> new String[]{
-                "You're on the Waitlist",
-                "Position #" + e.getWaitlistPosition() + " for " + e.getEventName()
+        }
+        if (event instanceof BookingPendingEvent e) {
+            return new String[]{
+                    "You're on the Waitlist",
+                    "Position #" + e.getWaitlistPosition() + " for " + e.getEventName()
             };
-            case BookingCancelledEvent e  -> new String[]{
-                "Booking Cancelled",
-                "Your booking for " + e.getEventName() + " has been cancelled"
+        }
+        if (event instanceof BookingCancelledEvent e) {
+            return new String[]{
+                    "Booking Cancelled",
+                    "Your booking for " + e.getEventName() + " has been cancelled"
             };
-            case NewEventPublishedEvent e -> new String[]{
-                "New Event: " + e.getEventName(),
-                "By " + e.getOrganizerName() + " at " + e.getLocationName()
+        }
+        if (event instanceof NewEventPublishedEvent e) {
+            return new String[]{
+                    "New Event: " + e.getEventName(),
+                    "By " + e.getOrganizerName() + " at " + e.getLocationName()
             };
-        };
+        }
+        return new String[]{"Notification", "You have a new notification"};
     }
 }

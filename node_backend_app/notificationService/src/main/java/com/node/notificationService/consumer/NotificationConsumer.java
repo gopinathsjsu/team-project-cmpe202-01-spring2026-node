@@ -35,20 +35,28 @@ public class NotificationConsumer {
     }
 
     private String resolveEmail(NotificationEvent event) {
-        return switch (event) {
-            case BookingConfirmedEvent e  -> e.getUserEmail();
-            case BookingPendingEvent e    -> e.getUserEmail();
-            case BookingCancelledEvent e  -> e.getUserEmail();
-            default -> "";
-        };
+        if (event instanceof BookingConfirmedEvent e) {
+            return e.getUserEmail();
+        }
+        if (event instanceof BookingPendingEvent e) {
+            return e.getUserEmail();
+        }
+        if (event instanceof BookingCancelledEvent e) {
+            return e.getUserEmail();
+        }
+        return "";
     }
 
     private String resolveUserId(NotificationEvent event) {
-        return switch (event) {
-            case BookingConfirmedEvent e  -> e.getUserId();
-            case BookingPendingEvent e    -> e.getUserId();
-            case BookingCancelledEvent e  -> e.getUserId();
-            default -> "";
-        };
+        if (event instanceof BookingConfirmedEvent e) {
+            return e.getUserId();
+        }
+        if (event instanceof BookingPendingEvent e) {
+            return e.getUserId();
+        }
+        if (event instanceof BookingCancelledEvent e) {
+            return e.getUserId();
+        }
+        return "";
     }
 }

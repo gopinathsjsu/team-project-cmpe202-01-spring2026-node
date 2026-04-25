@@ -4,9 +4,9 @@ import com.eventplatform.identity.dto.request.UpdateProfileRequest;
 import com.eventplatform.identity.dto.response.ProfileResponse;
 import com.eventplatform.identity.dto.response.UserResponse;
 import com.eventplatform.identity.entity.User;
-import com.eventplatform.identity.entity.UserProfile;
+import com.eventplatform.identity.entity.AttendeeProfile;
 import com.eventplatform.identity.exception.EntityNotFoundException;
-import com.eventplatform.identity.repository.UserProfileRepository;
+import com.eventplatform.identity.repository.AttendeeProfileRepository;
 import com.eventplatform.identity.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,14 +19,14 @@ import java.util.UUID;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final UserProfileRepository userProfileRepository;
+    private final AttendeeProfileRepository attendeeProfileRepository;
 
     @Transactional(readOnly = true)
     public ProfileResponse getProfile(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User", userId));
 
-        UserProfile profile = user.getUserProfile();
+        AttendeeProfile profile = user.getAttendeeProfile();
 
         ProfileResponse.ProfileResponseBuilder builder = ProfileResponse.builder()
                 .id(user.getId())
@@ -48,6 +48,7 @@ public class UserService {
             if (user.getPhone() == null) builder.phone(profile.getPhone());
             if (user.getAvatarUrl() == null) builder.avatarUrl(profile.getAvatarUrl());
             builder.timezone(profile.getTimezone());
+            builder.interest(profile.getInterest());
         }
 
         return builder.build();
@@ -73,9 +74,9 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User", userId));
 
-        UserProfile profile = user.getUserProfile();
+        AttendeeProfile profile = user.getAttendeeProfile();
         if (profile == null) {
-            profile = UserProfile.builder().user(user).build();
+            profile = AttendeeProfile.builder().user(user).build();
         }
 
         if (request.getUsername() != null) {
@@ -105,9 +106,10 @@ public class UserService {
         if (request.getBio() != null) user.setBio(request.getBio());
         if (request.getLocation() != null) user.setLocation(request.getLocation());
         if (request.getTimezone() != null) profile.setTimezone(request.getTimezone());
+        if (request.getInterest() != null) profile.setInterest(request.getInterest());
 
         userRepository.save(user);
-        userProfileRepository.save(profile);
+        attendeeProfileRepository.save(profile);
 
         return getProfile(userId);
     }
