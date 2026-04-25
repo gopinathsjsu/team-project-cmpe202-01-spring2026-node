@@ -115,6 +115,7 @@ public class UserService {
     }
 
     private UserResponse toUserResponse(User user) {
+        AttendeeProfile profile = user.getAttendeeProfile();
         return UserResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
@@ -122,6 +123,7 @@ public class UserService {
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
                 .avatarUrl(user.getAvatarUrl())
+                .interest(profile != null ? profile.getInterest() : null)
                 .active(user.isActive())
                 .role(user.getRole())
                 .build();

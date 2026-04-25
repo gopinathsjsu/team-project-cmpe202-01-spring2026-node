@@ -7,9 +7,11 @@ export interface User {
   username?: string;
   firstName?: string;
   lastName?: string;
+  interest?: string;
   token: string;
   refreshToken?: string;
   role: UserRole;
+  active?: boolean;
   avatar?: string;
   avatarUrl?: string;
 }
@@ -27,6 +29,7 @@ export interface Profile {
   bio?: string;
   location?: string;
   timezone?: string;
+  interest?: string;
   createdAt?: string;
 }
 

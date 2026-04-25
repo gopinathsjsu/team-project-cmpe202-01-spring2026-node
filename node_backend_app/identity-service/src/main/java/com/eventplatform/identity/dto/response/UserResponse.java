@@ -19,6 +19,7 @@ public class UserResponse {
     private String firstName;
     private String lastName;
     private String avatarUrl;
+    private String interest;
     private boolean active;
     private Role role;
 }
