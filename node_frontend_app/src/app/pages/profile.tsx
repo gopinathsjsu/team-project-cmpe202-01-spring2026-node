@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Mail, User as UserIcon, Phone, MapPin, Calendar, Save } from 'lucide-react';
+import { Mail, User as UserIcon, Phone, MapPin, Calendar, Save, X, Award } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
@@ -37,6 +37,9 @@ export function Profile() {
     const [locationSuggestions, setLocationSuggestions] = useState<string[]>([]);
     const [loadingLocationSuggestions, setLoadingLocationSuggestions] = useState(false);
     const [profile, setProfile] = useState<ProfileType | null>(null);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const [localAvatarPreview, setLocalAvatarPreview] = useState<string | null>(null);
+    const [interestDraft, setInterestDraft] = useState('');
     const [formData, setFormData] = useState({
         username: '',
         firstName: '',
@@ -47,6 +50,7 @@ export function Profile() {
         bio: '',
         avatarUrl: '',
         timezone: 'UTC',
+        interest: '',
     });
 
     useEffect(() => {
@@ -63,6 +67,7 @@ export function Profile() {
                     bio: data.bio ?? '',
                     avatarUrl: data.avatarUrl ?? '',
                     timezone: data.timezone ?? 'UTC',
+                    interest: data.interest ?? '',
                 });
             })
             .catch((err: unknown) => toast.error(getApiErrorMessage(err, 'Failed to load profile')))
@@ -106,6 +111,82 @@ export function Profile() {
         return currentUser?.name ?? 'User';
     }, [formData.firstName, formData.lastName, formData.username, currentUser?.name]);
 
+    const displayedAvatar = localAvatarPreview ?? formData.avatarUrl;
+    const interestItems = useMemo(
+        () =>
+            (formData.interest || '')
+                .split(',')
+                .map((item) => item.trim())
+                .filter(Boolean),
+        [formData.interest]
+    );
+    const profileCompletion = useMemo(() => {
+        const checks = [
+            Boolean(formData.firstName.trim()),
+            Boolean(formData.lastName.trim()),
+            Boolean(formData.username.trim()),
+            Boolean(formData.phone.trim()),
+            Boolean(formData.location.trim()),
+            Boolean(formData.bio.trim()),
+            Boolean(formData.avatarUrl.trim()),
+            Boolean(formData.timezone.trim()),
+            interestItems.length > 0,
+        ];
+        const completed = checks.filter(Boolean).length;
+        return Math.round((completed / checks.length) * 100);
+    }, [formData, interestItems.length]);
+
+    const normalizeInterest = (value: string) => value.trim().replace(/\s+/g, ' ');
+    const getInterestEmoji = (interest: string): string => {
+        const key = interest.toLowerCase();
+        if (key.includes('music') || key.includes('song') || key.includes('sing')) return '🎵';
+        if (key.includes('tech') || key.includes('coding') || key.includes('program')) return '💻';
+        if (key.includes('art') || key.includes('paint') || key.includes('design')) return '🎨';
+        if (key.includes('sport') || key.includes('gym') || key.includes('fitness')) return '🏅';
+        if (key.includes('travel') || key.includes('trip')) return '✈️';
+        if (key.includes('food') || key.includes('cook')) return '🍽️';
+        if (key.includes('book') || key.includes('read')) return '📚';
+        if (key.includes('movie') || key.includes('film')) return '🎬';
+        if (key.includes('dance')) return '💃';
+        return '✨';
+    };
+
+    const addInterest = () => {
+        const next = normalizeInterest(interestDraft);
+        if (!next) return;
+        const exists = interestItems.some((item) => item.toLowerCase() === next.toLowerCase());
+        if (exists) {
+            setInterestDraft('');
+            return;
+        }
+        handleChange('interest', [...interestItems, next].join(', '));
+        setInterestDraft('');
+    };
+
+    const removeInterest = (index: number) => {
+        handleChange(
+            'interest',
+            interestItems.filter((_, idx) => idx !== index).join(', ')
+        );
+    };
+    const badgeItems = useMemo(() => {
+        const items: Array<{ icon: string; label: string }> = [];
+        items.push({ icon: '🏅', label: `${profileCompletion}% Profile Complete` });
+        items.push({
+            icon: currentUser?.role === 'ADMIN' ? '🛡️' : currentUser?.role === 'ORGANIZER' ? '🎪' : '🎟️',
+            label:
+                currentUser?.role === 'ADMIN'
+                    ? 'Platform Admin'
+                    : currentUser?.role === 'ORGANIZER'
+                      ? 'Event Organizer'
+                      : 'Event Attendee',
+        });
+        interestItems.slice(0, 2).forEach((interest) => {
+            items.push({ icon: getInterestEmoji(interest), label: `${interest} Enthusiast` });
+        });
+        return items;
+    }, [profileCompletion, currentUser?.role, interestItems]);
+
     const refreshFormFromProfile = (data: ProfileType) => {
         setFormData({
             username: data.username ?? '',
@@ -117,6 +198,7 @@ export function Profile() {
             bio: data.bio ?? '',
             avatarUrl: data.avatarUrl ?? '',
             timezone: data.timezone ?? 'UTC',
+            interest: data.interest ?? '',
         });
     };
 
@@ -130,6 +212,7 @@ export function Profile() {
             bio: formData.bio.trim() || undefined,
             avatarUrl: formData.avatarUrl.trim() || undefined,
             timezone: formData.timezone.trim() || undefined,
+            interest: formData.interest.trim() || undefined,
         })
             .then((updated) => {
                 setProfile(updated);
@@ -154,6 +237,7 @@ export function Profile() {
 
     const handleCancel = () => {
         if (profile) refreshFormFromProfile(profile);
+        setLocalAvatarPreview(null);
         setIsEditing(false);
     };
     const handleChange = (field: string, value: string) => {
@@ -198,6 +282,29 @@ export function Profile() {
         );
     };
 
+    const handleProfileCircleClick = () => {
+        if (!isEditing) return;
+        fileInputRef.current?.click();
+    };
+
+    const handleRemovePhoto = () => {
+        setLocalAvatarPreview(null);
+        handleChange('avatarUrl', '');
+        toast.success('Profile photo removed. Click Save Changes to persist.');
+    };
+
+    const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            toast.error('Please select an image file');
+            return;
+        }
+        const objectUrl = URL.createObjectURL(file);
+        setLocalAvatarPreview(objectUrl);
+        toast.success('Photo imported. Add a photo URL to save permanently.');
+    };
+
     if (loading) {
         return <div className="container mx-auto px-4 py-8">Loading profile...</div>;
     }
@@ -210,15 +317,44 @@ export function Profile() {
                     <div className="px-6 pb-6">
                         <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 -mt-16">
                             <div className="relative">
-                                <div className="w-32 h-32 rounded-full bg-white p-2 shadow-lg">
-                                    {formData.avatarUrl ? (
-                                        <img src={formData.avatarUrl} alt={displayName} className="w-full h-full rounded-full object-cover" />
+                                <button
+                                    type="button"
+                                    className={`w-32 h-32 rounded-full bg-white p-2 shadow-lg ${isEditing ? 'cursor-pointer' : 'cursor-default'}`}
+                                    onClick={handleProfileCircleClick}
+                                    title={isEditing ? 'Tap to import photo' : 'Profile photo'}
+                                >
+                                    {displayedAvatar ? (
+                                        <img src={displayedAvatar} alt={displayName} className="w-full h-full rounded-full object-cover" />
                                     ) : (
                                         <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center text-white text-4xl font-bold">
                                             {displayName.charAt(0).toUpperCase()}
                                         </div>
                                     )}
-                                </div>
+                                </button>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={handleAvatarFileChange}
+                                />
+                                {isEditing && (
+                                    <div className="mt-2 text-center space-y-1">
+                                        <p className="text-xs text-gray-500">
+                                            Tap to choose your new profile photo
+                                        </p>
+                                        {(displayedAvatar || formData.avatarUrl) && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={handleRemovePhoto}
+                                            >
+                                                Remove Photo
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex-1">
@@ -373,17 +509,6 @@ export function Profile() {
                                 </div>
 
                                 <div>
-                                    <Label htmlFor="avatarUrl">Avatar URL</Label>
-                                    <Input
-                                        id="avatarUrl"
-                                        value={formData.avatarUrl}
-                                        onChange={(e) => handleChange('avatarUrl', e.target.value)}
-                                        disabled={!isEditing}
-                                        className="mt-1"
-                                    />
-                                </div>
-
-                                <div>
                                     <Label htmlFor="bio">Bio</Label>
                                     <Textarea
                                         id="bio"
@@ -393,6 +518,55 @@ export function Profile() {
                                         rows={4}
                                         className="mt-1"
                                     />
+                                </div>
+                                <div>
+                                    <Label htmlFor="interest">Interests</Label>
+                                    <div className="mt-1 space-y-3">
+                                        {isEditing ? (
+                                            <div className="flex gap-2">
+                                                <Input
+                                                    id="interest"
+                                                    value={interestDraft}
+                                                    onChange={(e) => setInterestDraft(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter' || e.key === ',') {
+                                                            e.preventDefault();
+                                                            addInterest();
+                                                        }
+                                                    }}
+                                                    placeholder="Type an interest and press Enter"
+                                                />
+                                                <Button type="button" variant="secondary" onClick={addInterest}>
+                                                    Add
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-gray-500">Your interests help personalize recommendations.</p>
+                                        )}
+                                        <div className="flex flex-wrap gap-2">
+                                            {interestItems.map((item, idx) => (
+                                                <span
+                                                    key={`${item}-${idx}`}
+                                                    className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700"
+                                                >
+                                                    {item}
+                                                    {isEditing && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeInterest(idx)}
+                                                            className="ml-1 rounded-full p-0.5 hover:bg-slate-200"
+                                                            title={`Remove ${item}`}
+                                                        >
+                                                            <X className="h-3 w-3" />
+                                                        </button>
+                                                    )}
+                                                </span>
+                                            ))}
+                                            {isEditing && interestItems.length === 0 && (
+                                                <span className="text-sm text-gray-500">Add interests to personalize your profile.</span>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                                 <div>
                                     <Label htmlFor="timezone">Timezone</Label>
@@ -471,30 +645,39 @@ export function Profile() {
                         <div className="bg-white rounded-lg shadow-sm p-6">
                             <h3 className="font-bold mb-4">Interests</h3>
                             <div className="flex flex-wrap gap-2">
-                                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">Music</span>
-                                <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">Tech</span>
-                                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">Food</span>
-                                <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm">Art</span>
-                                <span className="px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-sm">Sports</span>
+                                {interestItems.map((item, idx) => (
+                                        <span
+                                            key={`${item}-${idx}`}
+                                            className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700"
+                                        >
+                                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs shadow-sm">
+                                                {getInterestEmoji(item)}
+                                            </span>
+                                            {item}
+                                        </span>
+                                    ))}
+                                {interestItems.length === 0 && (
+                                    <span className="text-sm text-gray-500">No interests added yet.</span>
+                                )}
                             </div>
                         </div>
 
                         {/* Badges */}
                         <div className="bg-white rounded-lg shadow-sm p-6">
-                            <h3 className="font-bold mb-4">Badges</h3>
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="text-center">
-                                    <div className="text-3xl mb-1">🎉</div>
-                                    <div className="text-xs text-gray-600">Early Adopter</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-3xl mb-1">⭐</div>
-                                    <div className="text-xs text-gray-600">Top Attendee</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-3xl mb-1">🔥</div>
-                                    <div className="text-xs text-gray-600">Streak Master</div>
-                                </div>
+                            <h3 className="font-bold mb-4 flex items-center gap-2">
+                                <Award className="h-4 w-4 text-amber-500" />
+                                Badges
+                            </h3>
+                            <div className="space-y-2">
+                                {badgeItems.map((badge) => (
+                                    <div
+                                        key={badge.label}
+                                        className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
+                                    >
+                                        <span className="text-xl">{badge.icon}</span>
+                                        <span className="text-sm text-slate-700">{badge.label}</span>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </div>

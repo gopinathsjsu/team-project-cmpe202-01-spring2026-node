@@ -116,6 +116,7 @@ type UpdateProfilePayload = {
   bio?: string;
   location?: string;
   timezone?: string;
+  interest?: string;
 };
 
 type CreateAdminPayload = {
@@ -251,6 +252,8 @@ export function runAPI() {
         firstName: backendUser.firstName,
         lastName: backendUser.lastName,
         avatarUrl: backendUser.avatarUrl,
+        interest: backendUser.interest,
+        active: backendUser.active,
         avatar: backendUser.avatarUrl,
         role: mapBackendRole(backendUser.role),
         token: data.accessToken,
@@ -277,6 +280,8 @@ export function runAPI() {
         firstName: backendUser.firstName ?? user.firstName,
         lastName: backendUser.lastName ?? user.lastName,
         avatarUrl: backendUser.avatarUrl,
+        interest: backendUser.interest,
+        active: backendUser.active,
         avatar: backendUser.avatarUrl,
         role: mapBackendRole(backendUser.role),
         token: data.accessToken,
@@ -694,6 +699,8 @@ export function runAPI() {
         firstName: backendUser.firstName,
         lastName: backendUser.lastName,
         avatarUrl: backendUser.avatarUrl,
+        interest: backendUser.interest,
+        active: backendUser.active,
         avatar: backendUser.avatarUrl,
         role: mapBackendRole(backendUser.role),
         token: data.accessToken,
