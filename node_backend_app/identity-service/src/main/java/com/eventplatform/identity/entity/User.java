@@ -65,7 +65,7 @@ public class User {
     private Instant updatedAt;
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private UserProfile userProfile;
+    private AttendeeProfile attendeeProfile;
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private OrganizerProfile organizerProfile;

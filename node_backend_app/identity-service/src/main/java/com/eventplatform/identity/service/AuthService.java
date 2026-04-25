@@ -160,6 +160,7 @@ public class AuthService {
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
                 .avatarUrl(user.getAvatarUrl())
+                .active(user.isActive())
                 .role(user.getRole())
                 .build();
 

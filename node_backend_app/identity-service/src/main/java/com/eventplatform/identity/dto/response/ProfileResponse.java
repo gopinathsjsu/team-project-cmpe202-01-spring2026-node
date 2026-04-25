@@ -26,5 +26,6 @@ public class ProfileResponse {
     private String bio;
     private String location;
     private String timezone;
+    private String interest;
     private Instant createdAt;
 }

@@ -6,13 +6,13 @@ import lombok.*;
 import java.util.UUID;
 
 @Entity
-@Table(name = "user_profile")
+@Table(name = "attendee_profile")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserProfile {
+public class AttendeeProfile {
 
     @Id
     @Column(name = "user_id")
@@ -38,4 +38,7 @@ public class UserProfile {
     @Column(length = 50)
     @Builder.Default
     private String timezone = "UTC";
+
+    @Column(columnDefinition = "TEXT")
+    private String interest;
 }
