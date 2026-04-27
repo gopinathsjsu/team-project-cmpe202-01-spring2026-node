@@ -7,6 +7,7 @@ RUN mvn clean package -DskipTests \
     && find /app/target -maxdepth 1 -type f -name "*.jar" ! -name "*-plain.jar" -exec cp {} /app/application.jar \;
 
 FROM eclipse-temurin:17-jre
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app/application.jar application.jar
 EXPOSE 8082

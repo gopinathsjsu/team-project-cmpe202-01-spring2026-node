@@ -3,6 +3,7 @@ package com.node.bookingService.service;
 import com.node.bookingService.dto.*;
 import com.node.bookingService.exception.BookingException;
 import com.node.bookingService.exception.ResourceNotFoundException;
+import com.node.bookingService.messaging.BookingEventPublisher;
 import com.node.bookingService.model.*;
 import com.node.bookingService.repository.BookingRepository;
 import com.node.bookingService.repository.TicketTypeRepository;
@@ -10,6 +11,8 @@ import com.node.bookingService.dto.PaymentRequest;
 import com.node.bookingService.dto.PaymentResult;
 import com.node.bookingService.service.payment.PaymentStrategy;
 import com.node.bookingService.service.payment.PaymentStrategyFactory;
+import com.node.notificationService.events.BookingCancelledEvent;
+import com.node.notificationService.events.BookingConfirmedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -43,6 +46,9 @@ public class BookingServiceImpl implements BookingService {
 
     @Autowired
     ObjectMapper objectMapper;
+
+    @Autowired
+    private BookingEventPublisher bookingEventPublisher;
 
     @Override
     @Transactional
@@ -154,6 +160,11 @@ public class BookingServiceImpl implements BookingService {
         }
 
         Booking saved = bookingRepository.save(booking);
+
+        if (saved.getStatus() == BookingStatus.CONFIRMED) {
+            publishBookingConfirmed(saved);
+        }
+
         return toResponse(saved);
     }
 
@@ -280,7 +291,9 @@ public class BookingServiceImpl implements BookingService {
         log.info("Confirming booking id={}, ref={}", bookingId, booking.getBookingReference());
 
         booking.transitionTo(BookingStatus.CONFIRMED);
-        return toResponse(bookingRepository.save(booking));
+        Booking saved = bookingRepository.save(booking);
+        publishBookingConfirmed(saved);
+        return toResponse(saved);
     }
 
     @Override
@@ -308,7 +321,9 @@ public class BookingServiceImpl implements BookingService {
             }
         }
 
-        return toResponse(bookingRepository.save(booking));
+        Booking saved = bookingRepository.save(booking);
+        publishBookingCancelled(saved);
+        return toResponse(saved);
     }
 
     @Override
@@ -459,6 +474,57 @@ public class BookingServiceImpl implements BookingService {
                 //.eventWebsite(event.getEventWebsite())
                 //.eventContactEmail(event.getEventContactEmail())
                 .build();
+    }
+
+    private void publishBookingConfirmed(Booking booking) {
+        EventInfoDto event = safeFetchEvent(booking.getEventId());
+        BookingConfirmedEvent payload = BookingConfirmedEvent.builder()
+                .bookingId(booking.getBookingId())
+                .eventId(booking.getEventId())
+                .userId(booking.getUserId())
+                .userEmail(booking.getUserEmail())
+                .userName(deriveUserName(booking.getUserEmail()))
+                .eventName(event != null ? event.getEventName() : null)
+                .eventStartInstant(event != null && event.getEventStartInstant() != null
+                        ? event.getEventStartInstant().toString() : null)
+                .eventTimeZone(event != null ? event.getEventTimeZone() : null)
+                .ticketQuantity(booking.getQuantity() != null ? booking.getQuantity() : 0)
+                .totalAmount(booking.getTotalAmount() != null ? booking.getTotalAmount().doubleValue() : 0.0)
+                .build();
+        bookingEventPublisher.publish(booking.getBookingId(), payload);
+    }
+
+    private void publishBookingCancelled(Booking booking) {
+        EventInfoDto event = safeFetchEvent(booking.getEventId());
+        BookingCancelledEvent payload = BookingCancelledEvent.builder()
+                .bookingId(booking.getBookingId())
+                .eventId(booking.getEventId())
+                .userId(booking.getUserId())
+                .userEmail(booking.getUserEmail())
+                .userName(deriveUserName(booking.getUserEmail()))
+                .eventName(event != null ? event.getEventName() : null)
+                .eventStartInstant(event != null && event.getEventStartInstant() != null
+                        ? event.getEventStartInstant().toString() : null)
+                .eventTimeZone(event != null ? event.getEventTimeZone() : null)
+                .ticketQuantity(booking.getQuantity() != null ? booking.getQuantity() : 0)
+                .refundAmount(booking.getTotalAmount() != null ? booking.getTotalAmount().doubleValue() : 0.0)
+                .build();
+        bookingEventPublisher.publish(booking.getBookingId(), payload);
+    }
+
+    private EventInfoDto safeFetchEvent(String eventId) {
+        try {
+            return eventServiceClient.getEventById(eventId);
+        } catch (Exception e) {
+            log.warn("Could not fetch event {} for notification enrichment: {}", eventId, e.getMessage());
+            return null;
+        }
+    }
+
+    private String deriveUserName(String email) {
+        if (email == null) return "";
+        int at = email.indexOf('@');
+        return at > 0 ? email.substring(0, at) : email;
     }
 
     private TicketTypeResponse toTicketTypeResponse(TicketType tt) {

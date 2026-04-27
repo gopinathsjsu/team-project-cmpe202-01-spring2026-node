@@ -8,6 +8,7 @@
 #   identity-service      http://localhost:8081
 #   booking-service       http://localhost:8082
 #   notification-service  http://localhost:8083
+#   discovery-service     http://localhost:8084
 #   PostgreSQL (PostGIS)  localhost:5433
 #   Kafka                 localhost:9092
 #
@@ -57,12 +58,27 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     healthcheck:
       test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1"]
       interval: 10s
       timeout: 10s
       retries: 6
       start_period: 30s
+
+  # One-shot topic bootstrap. Idempotent (--if-not-exists).
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: node-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic booking.events --partitions 1 --replication-factor 1 &&
+       kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic event.events   --partitions 1 --replication-factor 1 &&
+       echo 'Topics ready.'"
+    restart: "no"
 
   events-service:
     build:
@@ -76,9 +92,19 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: password
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET:-c2VjdXJlLXNlY3JldC1rZXktZm9yLWV2ZW50LXBsYXRmb3JtLWlkZW50aXR5LXNlcnZpY2UtMjAyNg==}
     depends_on:
       postgres:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   booking-service:
     build:
@@ -92,12 +118,22 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: password
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       BOOKING_EVENT_SERVICE_BASE_URL: http://events-service:8080
+      JWT_SECRET: ${JWT_SECRET:-c2VjdXJlLXNlY3JldC1rZXktZm9yLWV2ZW50LXBsYXRmb3JtLWlkZW50aXR5LXNlcnZpY2UtMjAyNg==}
     depends_on:
       postgres:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
       events-service:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   identity-service:
     build:
@@ -114,11 +150,18 @@ services:
       DB_USERNAME: postgres
       DB_PASSWORD: password
       EVENT_SERVICE_URL: http://events-service:8080
+      JWT_SECRET: ${JWT_SECRET:-c2VjdXJlLXNlY3JldC1rZXktZm9yLWV2ZW50LXBsYXRmb3JtLWlkZW50aXR5LXNlcnZpY2UtMjAyNg==}
     depends_on:
       postgres:
         condition: service_healthy
       events-service:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   notification-service:
     build:
@@ -143,6 +186,14 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   discovery-service:
     build:
@@ -152,7 +203,7 @@ services:
     ports:
       - "8084:8084"
     environment:
-      server_port: 8084
+      SERVER_PORT: 8084
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/event_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: password
@@ -161,7 +212,13 @@ services:
       postgres:
         condition: service_healthy
       events-service:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
 volumes:
   postgres_data:
