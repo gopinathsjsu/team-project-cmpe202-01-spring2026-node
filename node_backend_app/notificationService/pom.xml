@@ -36,6 +36,12 @@
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
+		<!-- Actuator (healthchecks) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+
 		<!-- JPA + PostgreSQL (for FCM token storage and reminder queries) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

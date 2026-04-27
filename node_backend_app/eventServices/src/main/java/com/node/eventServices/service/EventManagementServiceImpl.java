@@ -6,7 +6,9 @@ import com.node.eventServices.dto.EventInfoDto;
 import com.node.eventServices.dto.TicketTypeItemRequest;
 import com.node.eventServices.dto.TicketTypeResponse;
 import com.node.eventServices.exception.ResourceNotFoundException;
+import com.node.eventServices.messaging.EventPublisher;
 import com.node.eventServices.model.User.User;
+import com.node.eventServices.model.events.EventCategory;
 import com.node.eventServices.model.events.EventStatus;
 import com.node.eventServices.model.events.TicketType;
 import com.node.eventServices.model.events.Events;
@@ -15,6 +17,7 @@ import com.node.eventServices.repository.TicketRepository;
 import com.node.eventServices.repository.TicketTypeRepository;
 import com.node.eventServices.repository.UserRepository;
 import com.node.eventServices.utils.MapperUtils;
+import com.node.notificationService.events.NewEventPublishedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -42,6 +45,8 @@ public class EventManagementServiceImpl implements EventManagementService {
     private TicketTypeRepository ticketTypeRepository;
     @Autowired
     private MapperUtils mapper;
+    @Autowired
+    private EventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -239,6 +244,11 @@ public class EventManagementServiceImpl implements EventManagementService {
 
         Events saved = eventRepository.save(event);
         log.info("Event id={} approved and published: {} -> {}", eventId, previousStatus, saved.getStatus());
+
+        if (saved.getStatus() == EventStatus.PUBLISHED) {
+            publishNewEventPublished(saved);
+        }
+
         return convertToDto(saved);
     }
 
@@ -297,7 +307,41 @@ public class EventManagementServiceImpl implements EventManagementService {
 
         Events saved = eventRepository.save(event);
         log.info("Event id={} status updated: {} -> {}", id, previousStatus, saved);
+
+        if (newStatus == EventStatus.PUBLISHED && previousStatus != EventStatus.PUBLISHED) {
+            publishNewEventPublished(saved);
+        }
+
         return convertToDto(saved);
+    }
+
+    private void publishNewEventPublished(Events event) {
+        String organizerName = userRepository.findById(event.getEventOwnerId())
+                .map(User::getUsername)
+                .orElse("Unknown");
+        String categoryName = null;
+        if (event.getCategories() != null && !event.getCategories().isEmpty()) {
+            EventCategory first = event.getCategories().get(0);
+            categoryName = first != null ? first.getCategoryName() : null;
+        }
+        String locationName = null;
+        if (event.getEventLocation() != null) {
+            locationName = event.getEventLocation().getLocationName() != null
+                    ? event.getEventLocation().getLocationName()
+                    : event.getEventLocation().getLocationAddress();
+        }
+        NewEventPublishedEvent payload = NewEventPublishedEvent.builder()
+                .eventId(event.getEventId())
+                .eventName(event.getEventName())
+                .eventStartInstant(event.getEventStartInstant() != null
+                        ? event.getEventStartInstant().toString() : null)
+                .eventTimeZone(event.getEventTimeZone())
+                .locationName(locationName)
+                .category(categoryName)
+                .ticketPrice(event.getTicketPrice() != null ? event.getTicketPrice().toPlainString() : null)
+                .organizerName(organizerName)
+                .build();
+        eventPublisher.publish(event.getEventId(), payload);
     }
 
     private String findOrganizerNameById(String eventOwnerId) {
