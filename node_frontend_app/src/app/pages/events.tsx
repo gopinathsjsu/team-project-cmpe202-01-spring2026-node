@@ -46,15 +46,21 @@ export function AllEvents() {
     }, [selectedCategories, priceFilter, sortBy]);
 
     useEffect(() => {
-        const fetchCategories = async () => {
-            const categories = await api.getCategories();
-            setCategories(categories);
+        let cancelled = false;
+        api.getCategories()
+            .then((categories) => {
+                if (!cancelled) setCategories(categories);
+            })
+            .catch((err) => {
+                if (!cancelled) console.error(err);
+            });
+        return () => {
+            cancelled = true;
         };
-
-        fetchCategories();
     }, []);
 
     useEffect(() => {
+        let cancelled = false;
         setEventsLoading(true);
         api
             .getActiveEventsPaged({
@@ -63,12 +69,20 @@ export function AllEvents() {
                 q: debouncedSearch.trim() || undefined,
             })
             .then((res) => {
+                if (cancelled) return;
                 setEvents(Array.isArray(res.content) ? res.content : []);
                 setEventsTotal(res.totalElements);
                 setEventsTotalPages(res.totalPages);
             })
-            .catch(console.error)
-            .finally(() => setEventsLoading(false));
+            .catch((err) => {
+                if (!cancelled) console.error(err);
+            })
+            .finally(() => {
+                if (!cancelled) setEventsLoading(false);
+            });
+        return () => {
+            cancelled = true;
+        };
     }, [debouncedSearch, eventsPage]);
 
     const toggleCategory = (categoryName: string) => {

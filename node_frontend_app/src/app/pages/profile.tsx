@@ -54,8 +54,10 @@ export function Profile() {
     });
 
     useEffect(() => {
+        let cancelled = false;
         api.getMyProfile()
             .then((data) => {
+                if (cancelled) return;
                 setProfile(data);
                 setFormData({
                     username: data.username ?? '',
@@ -70,8 +72,15 @@ export function Profile() {
                     interest: data.interest ?? '',
                 });
             })
-            .catch((err: unknown) => toast.error(getApiErrorMessage(err, 'Failed to load profile')))
-            .finally(() => setLoading(false));
+            .catch((err: unknown) => {
+                if (!cancelled) toast.error(getApiErrorMessage(err, 'Failed to load profile'));
+            })
+            .finally(() => {
+                if (!cancelled) setLoading(false);
+            });
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     useEffect(() => {

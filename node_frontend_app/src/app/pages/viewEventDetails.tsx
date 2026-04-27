@@ -25,15 +25,20 @@ export function EventDetail() {
 
     useEffect(() => {
         if (!id) return;
+        let cancelled = false;
         setLoading(true);
         Promise.all([
             api.getEventById(id).catch(() => null),
             api.getEventBookings(id).catch(() => [])
         ]).then(([eventData, bookings]) => {
+            if (cancelled) return;
             setEvent(eventData);
             setBookings(bookings);
             setLoading(false);
         });
+        return () => {
+            cancelled = true;
+        };
     }, [id]);
 
     //const attendeeCount = bookings.reduce((sum, b) => sum + b.ticketQuantity, 0) || 0;
