@@ -9,7 +9,6 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
     const { isAuthenticated, currentUser } = useAuth();
-    console.log(currentUser?.role);
     const location = useLocation();
 
     if (!isAuthenticated) {

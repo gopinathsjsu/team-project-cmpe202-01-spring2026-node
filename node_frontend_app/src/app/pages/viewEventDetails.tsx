@@ -71,7 +71,6 @@ export function EventDetail() {
     const isBookable = event.status === 'PUBLISHED' || event.status === 'APPROVED' || startDate > new Date();
 
     const isAlreadyBookedByUser = bookings.some(b => String(b.userId) === String(currentUser?.id) && b.status === 'CONFIRMED');
-    console.log('isAlreadyBookedByUser:', isAlreadyBookedByUser, 'bookings:', bookings, 'currentUser:', currentUser);
     const handleShare = () => {
         navigator.clipboard.writeText(window.location.href);
         toast.success('Link copied to clipboard!');
