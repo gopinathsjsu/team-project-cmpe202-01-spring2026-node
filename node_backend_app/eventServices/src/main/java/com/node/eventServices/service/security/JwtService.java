@@ -1,10 +1,12 @@
 package com.node.eventServices.service.security;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -15,6 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
+@Slf4j
 @Service
 public class JwtService {
 
@@ -65,13 +68,28 @@ public class JwtService {
     public boolean isTokenValid(String token, UserDetails userDetails) {
         // Allow tokens where the subject matches the username OR where the token includes an "email" claim.
         final String username = userDetails.getUsername();
-        final String tokenSubject = extractUsername(token);
-        final String tokenEmail = extractEmail(token);
+        try {
+            final String tokenSubject = extractUsername(token);
+            final String tokenEmail = extractEmail(token);
 
-        boolean matchesSubject = tokenSubject != null && tokenSubject.equals(username);
-        boolean matchesEmail = tokenEmail != null && tokenEmail.equals(username);
+            boolean matchesSubject = tokenSubject != null && tokenSubject.equals(username);
+            boolean matchesEmail = tokenEmail != null && tokenEmail.equals(username);
+            boolean expired = isTokenExpired(token);
 
-        return (matchesSubject || matchesEmail) && !isTokenExpired(token);
+            if (!(matchesSubject || matchesEmail)) {
+                log.debug("JWT rejected: subject/email did not match userDetails username (username={}, tokenSubject={}, tokenEmail={})",
+                        username, tokenSubject, tokenEmail);
+                return false;
+            }
+            if (expired) {
+                log.debug("JWT rejected: token expired (username={})", username);
+                return false;
+            }
+            return true;
+        } catch (JwtException e) {
+            log.debug("JWT rejected: parse/signature failure (username={}): {}", username, e.getMessage());
+            return false;
+        }
     }
 
     private boolean isTokenExpired(String token) {

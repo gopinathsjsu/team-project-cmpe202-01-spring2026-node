@@ -44,10 +44,13 @@ public class AuthService {
     @Transactional
     public AuthResponse register(RegisterRequest request, String ipAddress) {
         String normalizedEmail = request.getEmail().toLowerCase().trim();
+        log.info("Registration attempt: email={}, requestedRole={}, ip={}",
+                normalizedEmail, request.getRole(), ipAddress);
         ensureEmailAvailable(normalizedEmail);
 
         Role role = request.getRole() != null ? request.getRole() : Role.ATTENDEE;
         if (role == Role.ADMIN) {
+            log.warn("Rejected admin self-registration: email={}, ip={}", normalizedEmail, ipAddress);
             throw new IllegalArgumentException("Admin registration is not allowed");
         }
 
@@ -72,12 +75,15 @@ public class AuthService {
         auditLogService.log(user.getId(), "REGISTER", "USER", user.getId().toString(),
                 Map.of("email", user.getEmail(), "role", role.name()), ipAddress);
 
+        log.info("Registration succeeded: userId={}, email={}, role={}", user.getId(), user.getEmail(), role);
         return buildAuthResponse(user, accessToken, refreshToken);
     }
 
     @Transactional
     public AuthResponse bootstrapInitialAdmin(CreateAdminRequest request, String ipAddress) {
+        log.info("Bootstrap admin attempt: email={}, ip={}", request.getEmail(), ipAddress);
         if (userRepository.existsByRole(Role.ADMIN)) {
+            log.warn("Bootstrap admin rejected — admin already exists (ip={})", ipAddress);
             throw new IllegalArgumentException("Initial admin already exists. Use admin APIs to create additional admins.");
         }
 
@@ -105,17 +111,20 @@ public class AuthService {
         auditLogService.log(adminUser.getId(), "ADMIN_BOOTSTRAP", "USER", adminUser.getId().toString(),
                 Map.of("email", adminUser.getEmail(), "role", Role.ADMIN.name()), ipAddress);
 
+        log.info("Bootstrap admin succeeded: userId={}, email={}", adminUser.getId(), adminUser.getEmail());
         return buildAuthResponse(adminUser, accessToken, refreshToken);
     }
 
     @Transactional
     public AuthResponse login(LoginRequest request, String ipAddress) {
+        log.info("Login attempt: email={}, ip={}", request.getEmail(), ipAddress);
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
         } catch (BadCredentialsException e) {
             auditLogService.log(null, "LOGIN_FAILURE", "USER", null,
                     Map.of("email", request.getEmail()), ipAddress);
+            log.warn("Login failed: email={}, ip={}, reason=invalid_credentials", request.getEmail(), ipAddress);
             throw new BadCredentialsException("Invalid email or password");
         }
 
@@ -128,15 +137,21 @@ public class AuthService {
         auditLogService.log(user.getId(), "LOGIN_SUCCESS", "USER", user.getId().toString(),
                 Map.of("email", user.getEmail()), ipAddress);
 
+        log.info("Login succeeded: userId={}, email={}, role={}, ip={}",
+                user.getId(), user.getEmail(), user.getRole(), ipAddress);
         return buildAuthResponse(user, accessToken, refreshToken);
     }
 
     @Transactional
     public AuthResponse refresh(String encodedRefreshToken) {
+        log.debug("Token refresh attempt");
         RefreshToken oldToken = refreshTokenService.validateAndRotate(encodedRefreshToken);
 
         User user = userRepository.findById(oldToken.getUserId())
-                .orElseThrow(() -> new BadCredentialsException("User not found"));
+                .orElseThrow(() -> {
+                    log.warn("Token refresh failed: userId={} not found", oldToken.getUserId());
+                    return new BadCredentialsException("User not found");
+                });
 
         String accessToken = jwtProvider.generateAccessToken(user.getId(), user.getEmail(), user.getRole());
         String newRefreshToken = refreshTokenService.createRefreshToken(user.getId());
@@ -144,11 +159,13 @@ public class AuthService {
         auditLogService.log(user.getId(), "TOKEN_REFRESH", "USER", user.getId().toString(),
                 Map.of("email", user.getEmail()), null);
 
+        log.info("Token refreshed: userId={}", user.getId());
         return buildAuthResponse(user, accessToken, newRefreshToken);
     }
 
     @Transactional
     public void logout(UUID userId) {
+        log.info("Logout: userId={}", userId);
         refreshTokenService.revokeAllUserTokens(userId);
     }
 

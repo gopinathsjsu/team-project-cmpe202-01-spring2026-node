@@ -100,6 +100,7 @@ public class AdminService {
         auditLogService.log(creatorAdminId, "ADMIN_CREATE", "USER", createdAdmin.getId().toString(),
                 Map.of("email", createdAdmin.getEmail(), "role", Role.ADMIN.name()), ipAddress);
 
+        log.info("Admin {} created new admin: userId={}, email={}", creatorAdminId, createdAdmin.getId(), createdAdmin.getEmail());
         return toUserResponse(createdAdmin);
     }
 
@@ -127,6 +128,7 @@ public class AdminService {
         auditLogService.log(actorAdminId, "ADMIN_REMOVE", "USER", targetUser.getId().toString(),
                 Map.of("email", targetUser.getEmail(), "newRole", Role.ATTENDEE.name()), ipAddress);
 
+        log.info("Admin {} demoted admin {} ({}) to ATTENDEE", actorAdminId, targetUserId, targetUser.getEmail());
         return MessageResponse.builder()
                 .message("Admin role removed for user " + targetUser.getEmail())
                 .build();
@@ -155,6 +157,7 @@ public class AdminService {
         auditLogService.log(actorAdminId, "USER_DEACTIVATE", "USER", targetUser.getId().toString(),
                 Map.of("email", targetUser.getEmail(), "role", targetUser.getRole().name()), ipAddress);
 
+        log.info("Admin {} deactivated user {} ({})", actorAdminId, targetUserId, targetUser.getEmail());
         return MessageResponse.builder()
                 .message("User deactivated: " + targetUser.getEmail())
                 .build();
@@ -183,6 +186,7 @@ public class AdminService {
         auditLogService.log(actorAdminId, "USER_REACTIVATE", "USER", targetUser.getId().toString(),
                 Map.of("email", targetUser.getEmail(), "role", targetUser.getRole().name()), ipAddress);
 
+        log.info("Admin {} reactivated user {} ({})", actorAdminId, targetUserId, targetUser.getEmail());
         return MessageResponse.builder()
                 .message("User reactivated: " + targetUser.getEmail())
                 .build();
@@ -208,6 +212,7 @@ public class AdminService {
         auditLogService.log(actorAdminId, "USER_DELETE", "USER", targetUserId.toString(),
                 Map.of("email", targetEmail, "role", targetRole), ipAddress);
 
+        log.warn("Admin {} hard-deleted user {} (email={}, role={})", actorAdminId, targetUserId, targetEmail, targetRole);
         return MessageResponse.builder()
                 .message("User deleted: " + targetEmail)
                 .build();
