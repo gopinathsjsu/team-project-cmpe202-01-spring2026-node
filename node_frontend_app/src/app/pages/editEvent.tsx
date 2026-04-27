@@ -194,7 +194,7 @@ export function EditEvent() {
                     console.error(err);
                     const msg =
                         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-                        'Could not load ticket types. Start booking service (port 8082) and use the Vite dev proxy.';
+                        'Could not load ticket types. Please try again or contact support.';
                     toast.error(msg);
                     setTicketTypeRows([
                         newTicketTypeRow({

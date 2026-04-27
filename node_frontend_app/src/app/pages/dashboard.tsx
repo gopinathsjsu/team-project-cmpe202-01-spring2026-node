@@ -39,8 +39,6 @@ const createGoogleCalendarLink = (event: any) => {
     try {
         // Remove dashes, colons, and milliseconds to match Google Calendar format (YYYYMMDDTHHMMSSZ)
         const start = new Date(startDateStr).toISOString().replace(/-|:|\.\d\d\d/g, '');
-        console.log("Start Date String:", startDateStr);
-        console.log("Start Date:", start);
         const end = new Date(endDateStr).toISOString().replace(/-|:|\.\d\d\d/g, '');
         return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${details}&location=${location}`;
     } catch (e) {
