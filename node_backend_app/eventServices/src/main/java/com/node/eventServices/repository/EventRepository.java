@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,20 +18,20 @@ import org.springframework.data.domain.Pageable;
 @Repository
 public interface EventRepository extends JpaRepository<Events, String> {
 
-    long countByEventOwnerId(String ownerId);
+    long countByEventOwnerId(UUID ownerId);
 
-    Page<Events> findByEventOwnerId(String ownerId, Pageable pageable);
+    Page<Events> findByEventOwnerId(UUID ownerId, Pageable pageable);
 
-    Page<Events> findByEventOwnerIdAndStatus(String ownerId, EventStatus status, Pageable pageable);
+    Page<Events> findByEventOwnerIdAndStatus(UUID ownerId, EventStatus status, Pageable pageable);
 
     @Query("SELECT e FROM Events e WHERE e.eventOwnerId = :ownerId AND e.status IN :statuses")
     Page<Events> findByEventOwnerIdAndStatusIn(
-            @Param("ownerId") String ownerId,
+            @Param("ownerId") UUID ownerId,
             @Param("statuses") List<EventStatus> statuses,
             Pageable pageable);
 
     @Query("SELECT COALESCE(SUM(e.maxCapacity), 0) FROM Events e WHERE e.eventOwnerId = :ownerId")
-    Long sumMaxCapacityForOrganizer(@Param("ownerId") String ownerId);
+    Long sumMaxCapacityForOrganizer(@Param("ownerId") UUID ownerId);
 
     // The :q parameter must be non-null (callers pass "" for "no filter").
     // A null String is bound as bytea by the Postgres driver and breaks lower().
@@ -43,11 +44,11 @@ public interface EventRepository extends JpaRepository<Events, String> {
 
     long countByStatus(EventStatus status);
 
-    List<Events> findByEventOwnerId(String ownerId);
+    List<Events> findByEventOwnerId(UUID ownerId);
 
     List<Events> findByEventNameContainingIgnoreCase(String name);
 
-    List<Events> findByEventOwnerIdAndStatus(String ownerId, EventStatus status);
+    List<Events> findByEventOwnerIdAndStatus(UUID ownerId, EventStatus status);
 
     @Query("SELECT e FROM Events e WHERE e.status = 'PUBLISHED' AND e.eventStartInstant > CURRENT_TIMESTAMP")
     List<Events> findActiveEvents();
@@ -67,9 +68,15 @@ public interface EventRepository extends JpaRepository<Events, String> {
     // :q must be non-null (callers pass "" for "no filter"). See findActiveEventsPage.
     // :status remains nullable -- enums are bound with explicit type so they don't
     // hit the bytea inference issue.
-    @Query("SELECT e FROM Events e LEFT JOIN User u ON e.eventOwnerId = u.userId WHERE " +
+    @Query("SELECT e FROM Events e LEFT JOIN User u ON e.eventOwnerId = u.id WHERE " +
            "(:status IS NULL OR e.status = :status) AND " +
            "(LOWER(e.eventName) LIKE LOWER(CONCAT('%', :q, '%')) OR " +
            "LOWER(COALESCE(u.username, '')) LIKE LOWER(CONCAT('%', :q, '%')))")
     Page<Events> findAdminPage(@Param("status") EventStatus status, @Param("q") String q, Pageable pageable);
+
+    @Query("SELECT e FROM Events e LEFT JOIN User u ON e.eventOwnerId = u.id WHERE " +
+           "(LOWER(e.eventName) LIKE LOWER(CONCAT('%', :q, '%')) OR " +
+           "LOWER(COALESCE(u.username, '')) LIKE LOWER(CONCAT('%', :q, '%')))")
+    Page<Events> findAllAdminEventsPage(@Param("q") String q, Pageable pageable);
+
 }

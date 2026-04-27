@@ -53,7 +53,7 @@ public class EventServicesController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping
+    @GetMapping({ "", "/" })
     public ResponseEntity<List<EventInfoDto>> getAllEvents() {
         log.debug("GET /api/v1/events");
         return ResponseEntity.ok(eventManagementService.getAllEvents());

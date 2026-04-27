@@ -1,3 +1,4 @@
+// java
 package com.node.eventServices.config;
 
 import com.node.eventServices.repository.UserRepository;
@@ -15,6 +16,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.Collections;
+
 @Configuration
 @RequiredArgsConstructor
 public class ApplicationConfig {
@@ -23,8 +26,12 @@ public class ApplicationConfig {
 
     @Bean
     public UserDetailsService userDetailsService() {
-        return email -> userRepository.findByUserEmail(email)
-                //.or(() -> userRepository.findByUsername(username))
+        return username -> userRepository.findByUserEmail(username)
+                .map(u -> new org.springframework.security.core.userdetails.User(
+                        u.getUserEmail(),
+                        u.getHashedPassword(),
+                        Collections.emptyList() // replace with mapped authorities when roles exist
+                ))
                 .orElseThrow(() -> new UsernameNotFoundException("User email not found"));
     }
 

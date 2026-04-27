@@ -27,6 +27,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -71,6 +72,7 @@ public class EventManagementServiceImpl implements EventManagementService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<EventInfoDto> getAllEvents() {
         log.debug("Fetching all events");
         List<EventInfoDto> events = eventRepository.findAll().stream()
@@ -81,17 +83,23 @@ public class EventManagementServiceImpl implements EventManagementService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<EventInfoDto> getAdminEventsPage(EventStatus status, String q, Pageable pageable) {
         // Always pass a non-null search string. When q is blank we send "" so
+        //If EventsStatus is null, then we return all events
         // the LIKE matches everything. Passing null lets the Postgres JDBC
         // driver infer the parameter type as bytea, which then breaks
         // lower()/trim() in the query (function lower(bytea) does not exist).
         String qq = (q == null) ? "" : q.trim();
+        if (status == null) {
+            return eventRepository.findAllAdminEventsPage(qq, pageable).map(this::convertToDto);
+        }
         Page<Events> page = eventRepository.findAdminPage(status, qq, pageable);
         return page.map(this::convertToDto);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<EventInfoDto> getActiveEventsPage(String q, Pageable pageable) {
         // See getAdminEventsPage: never pass null for the search term.
         String qq = (q == null) ? "" : q.trim();
@@ -99,7 +107,9 @@ public class EventManagementServiceImpl implements EventManagementService {
     }
 
     @Override
-    public Page<EventInfoDto> getOrganizerEventsPage(String organizerId, String tab, Pageable pageable) {
+    @Transactional(readOnly = true)
+    public Page<EventInfoDto> getOrganizerEventsPage(String organizer_Id, String tab, Pageable pageable) {
+        UUID organizerId = UUID.fromString(organizer_Id);
         String t = tab == null || tab.isBlank() ? "all" : tab.trim().toLowerCase();
         Page<Events> page;
         switch (t) {
@@ -126,7 +136,8 @@ public class EventManagementServiceImpl implements EventManagementService {
     }
 
     @Override
-    public OrganizerEventSummaryDto getOrganizerSummary(String organizerId) {
+    public OrganizerEventSummaryDto getOrganizerSummary(String organizer_Id) {
+        UUID organizerId = UUID.fromString(organizer_Id);
         long count = eventRepository.countByEventOwnerId(organizerId);
         Long sold = ticketTypeRepository.sumSoldQuantityForOrganizer(organizerId);
         BigDecimal rev = ticketTypeRepository.sumRevenueForOrganizer(organizerId);
@@ -209,6 +220,7 @@ public class EventManagementServiceImpl implements EventManagementService {
     @Override
     @Transactional
     public void deleteEvent(String id) {
+
         findEventOrThrow(id);
         log.warn("Deleting event id={}", id);
         eventRepository.deleteById(id);
@@ -275,7 +287,9 @@ public class EventManagementServiceImpl implements EventManagementService {
 
     @Override
     public List<EventInfoDto> getEventsByOrganizer(String organizerId) {
-        return eventRepository.findByEventOwnerId(organizerId)
+        UUID organizerUuid = UUID.fromString(organizerId);
+        log.debug("Fetching events for organizer id={}", organizerUuid);
+        return eventRepository.findByEventOwnerId(organizerUuid)
                 .stream().map(this::convertToDto).toList();
     }
 
@@ -290,8 +304,9 @@ public class EventManagementServiceImpl implements EventManagementService {
     @Override
     public List<EventInfoDto> getEventsByOrganizerAndStatus(String organizerId, String status) {
         EventStatus eventStatus = EventStatus.fromString(status);
+        UUID organizerUuid = UUID.fromString(organizerId);
         log.debug("Fetching events for organizer id={}, status={}", organizerId, eventStatus);
-        return eventRepository.findByEventOwnerIdAndStatus(organizerId, eventStatus).stream()
+        return eventRepository.findByEventOwnerIdAndStatus(organizerUuid, eventStatus).stream()
                 .map(this::convertToDto)
                 .toList();
     }
@@ -321,8 +336,9 @@ public class EventManagementServiceImpl implements EventManagementService {
     }
 
     private void publishNewEventPublished(Events event) {
-        String organizerName = userRepository.findById(event.getEventOwnerId())
-                .map(User::getUsername)
+        UUID organizerId = event.getEventOwnerId();
+        String organizerName = userRepository.findById(organizerId)
+                .map(User::getProfileUsername)
                 .orElse("Unknown");
         String categoryName = null;
         if (event.getCategories() != null && !event.getCategories().isEmpty()) {
@@ -350,8 +366,9 @@ public class EventManagementServiceImpl implements EventManagementService {
     }
 
     private String findOrganizerNameById(String eventOwnerId) {
-        return userRepository.findById(eventOwnerId)
-                .map(User::getUsername)
+        UUID ownerUuid = UUID.fromString(eventOwnerId);
+        return userRepository.findById(ownerUuid)
+                .map(User::getProfileUsername)
                 .orElse("Unknown Organizer");
     }
 
@@ -370,7 +387,7 @@ public class EventManagementServiceImpl implements EventManagementService {
 
     private EventInfoDto convertToDto(Events event) {
         String ownerName = userRepository.findById(event.getEventOwnerId())
-                .map(User::getUsername)
+                .map(User::getProfileUsername)
                 .orElse("Unknown");
         Long ticketsSold = findTicketsSoldForEvent(event.getEventId());
         log.info("Tickets sold for event id={}: {}", event.getEventId(), ticketsSold);

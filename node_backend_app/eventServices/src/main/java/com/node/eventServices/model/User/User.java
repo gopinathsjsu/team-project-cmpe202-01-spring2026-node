@@ -1,78 +1,75 @@
 package com.node.eventServices.model.User;
 
 import jakarta.persistence.*;
+import lombok.Builder;
 import lombok.Data;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDate;
-import java.util.Collection;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.UUID;
 
+@Builder
 @Entity
 @Data
 @Table(name = "users")
-public class User implements UserDetails {
+public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private String userId;
+    private UUID id;
 
     private String username;
 
     private String userEmail;
 
-    private String userPassword;
+    private String passwordHash;
 
-    @OneToMany(mappedBy = "user", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    private List<UserRole> userRoles;
+    private Role roles;
 
-    private String userStatus;
+    @Column(name = "is_active", nullable = false)
+    @Builder.Default
+    private boolean isActive = true;
+
+    @Column(name = "first_name", length = 100)
+    private  String firstName;
+
+    @Column(name = "last_name", length = 100)
+    private String lastName;
+
+    @Column(length = 20)
+    private String phone;
+
+    private String location;
+
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
+
+    @Column(columnDefinition = "TEXT")
+    private String bio;
 
     private LocalDate createdAt;
 
     private LocalDate updatedAt;
 
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        if (userRoles == null) {
-            return List.of();
-        }
-        return userRoles.stream()
-                .map(UserRole::getRoleName)
-                .filter(roleName -> roleName != null && !roleName.isBlank())
-                .map(SimpleGrantedAuthority::new)
-                .collect(Collectors.toList());
+    public String getHashedPassword() {
+        return passwordHash;
     }
 
-    @Override
-    public String getPassword() {
-        return userPassword;
-    }
+    /**
+     * Spring Security principal name; must match {@code loadUserByUsername} (email) and JWT email/subject checks.
+     */
 
-    @Override
     public String getUsername() {
         return username;
     }
 
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
+    /** Profile display name (the {@code username} column), not the security principal. */
+    public String getProfileUsername() {
+        if (username != null && !username.isBlank()) {
+            return username;
+        }
+        return userEmail;
     }
 
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
     public boolean isEnabled() {
         return true;
     }
