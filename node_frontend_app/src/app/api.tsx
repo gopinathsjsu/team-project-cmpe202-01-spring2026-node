@@ -143,8 +143,26 @@ function readStoredUser(): StoredUser | null {
   }
 }
 
+// Dispatched whenever the stored user changes from a non-React caller (e.g. the
+// axios interceptor refreshing the token). AuthContext listens for it and
+// re-reads localStorage so React state never drifts from the persisted source
+// of truth. Cross-tab sync is handled separately via the native `storage` event.
+export const AUTH_CHANGED_EVENT = 'auth:changed';
+
+function notifyAuthChanged(): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(AUTH_CHANGED_EVENT));
+  }
+}
+
 function writeStoredUser(user: StoredUser): void {
   localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+  notifyAuthChanged();
+}
+
+function clearStoredUser(): void {
+  localStorage.removeItem(AUTH_STORAGE_KEY);
+  notifyAuthChanged();
 }
 
 function buildDisplayName(user: {
@@ -231,7 +249,7 @@ axios.interceptors.response.use(
       originalRequest.headers.Authorization = `Bearer ${newToken}`;
       return axios(originalRequest);
     } catch (refreshError) {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
+      clearStoredUser();
       return Promise.reject(refreshError);
     }
   }
