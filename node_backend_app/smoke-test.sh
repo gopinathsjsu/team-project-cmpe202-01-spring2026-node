@@ -107,10 +107,10 @@ section "Phase 2: public endpoint probes"
 # events-service: anonymous GETs that should always 200 (even with empty data)
 probe "events       list events"      GET "${EVENTS_URL}/api/v1/events"               '200' || true
 probe "events       active events"    GET "${EVENTS_URL}/api/v1/events/activeEvents"  '200' || true
-probe "events       categories"       GET "${EVENTS_URL}/api/v1/event/categories"     '200' || true
+probe "events       categories"       GET "${EVENTS_URL}/api/v1/events/categories"    '200' || true
 
 # identity-service
-probe "identity     auth health"      GET "${IDENTITY_URL}/api/v1/auth/health"        '200' || true
+probe "identity     health endpoint"  GET "${IDENTITY_URL}/api/v1/health"             '200' || true
 # /api/v1/me requires auth — exercised in phase 3
 probe "identity     /me unauthorized" GET "${IDENTITY_URL}/api/v1/me"                 '401|403' || true
 
