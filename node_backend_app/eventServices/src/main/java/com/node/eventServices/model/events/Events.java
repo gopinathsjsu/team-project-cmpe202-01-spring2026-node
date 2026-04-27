@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "events")
@@ -73,7 +74,7 @@ public class Events {
     private LocalDate eventPublishDate;
 
     @NotNull(message = "Event owner is required")
-    private String eventOwnerId;
+    private UUID eventOwnerId;
 
     private String approverId;
 

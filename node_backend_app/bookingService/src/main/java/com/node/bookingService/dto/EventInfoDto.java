@@ -8,6 +8,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -35,7 +36,7 @@ public class EventInfoDto {
     // IANA timezone id supplied by client (e.g. "America/Los_Angeles"). Optional but recommended.
     private String eventTimeZone;
 
-    private String eventOwnerId;
+    private UUID eventOwnerId;
     private String eventOwnerName;
     //private EventStatus status;
     private List<String> allowedTransitions;

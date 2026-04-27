@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 public class CreateEventRequest {
@@ -40,6 +41,6 @@ public class CreateEventRequest {
     private String eventTimeZone;
 
     @NotNull(message = "Event owner is required")
-    private String eventOwnerId;
+    private UUID eventOwnerId;
     private String status;
 }

@@ -20,6 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -210,5 +211,21 @@ public class AuthService {
 
         String inferred = normalizedEmail.split("@")[0];
         return inferred.isBlank() ? null : inferred;
+    }
+
+    public List<UserResponse> getAllUsers() {
+        List<User> users = userRepository.findAll();
+        return users.stream()
+                .map(user -> UserResponse.builder()
+                        .id(user.getId())
+                        .email(user.getEmail())
+                        .username(user.getUsername())
+                        .firstName(user.getFirstName())
+                        .lastName(user.getLastName())
+                        .avatarUrl(user.getAvatarUrl())
+                        .active(user.isActive())
+                        .role(user.getRole())
+                        .build())
+                .toList();
     }
 }

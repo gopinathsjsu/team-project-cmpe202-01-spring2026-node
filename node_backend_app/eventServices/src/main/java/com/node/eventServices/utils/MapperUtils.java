@@ -62,7 +62,7 @@ public class MapperUtils {
                 .eventTimeZone(event.getEventTimeZone())
                 .status(event.getStatus())
                 .allowedTransitions(allowedTransitions)
-                .eventOwnerId(event.getEventOwnerId())
+                .eventOwnerId(event.getEventOwnerId().toString())
                 .eventOwnerName(organiserName)
                 .ticketsSold(ticketsSold)
 

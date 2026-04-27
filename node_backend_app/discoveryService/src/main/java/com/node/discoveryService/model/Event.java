@@ -16,7 +16,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
-
+import java.util.UUID;
 
 @Entity
 @Table(name = "events")
@@ -30,7 +30,7 @@ public class Event {
     private String eventDescription;
     private LocalDate eventStartDate;
     private LocalDate eventEndDate;
-    private String eventOwnerId;
+    private UUID eventOwnerId;
     private long maxCapacity;
 
     @Enumerated(EnumType.STRING)
@@ -70,7 +70,7 @@ public class Event {
     {
         return eventEndDate;
     }
-    public String getEventOwnerId()
+    public UUID getEventOwnerId()
     {
         return eventOwnerId;
     }
@@ -145,7 +145,7 @@ public class Event {
     {
         this.eventEndDate  = eventEndDate ;
     }
-    public void setEventOwnerId(String eventOwnerId)
+    public void setEventOwnerId(UUID eventOwnerId)
     {
         this.eventOwnerId = eventOwnerId;
     }

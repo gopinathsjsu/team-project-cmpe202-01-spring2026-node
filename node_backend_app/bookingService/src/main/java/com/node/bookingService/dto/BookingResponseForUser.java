@@ -7,6 +7,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -37,7 +38,7 @@ public class BookingResponseForUser {
     private String eventContactEmail;
     private String eventContactPhone;
     private String eventOwnerName;
-    private String eventOwnerId;
+    private UUID eventOwnerId;
     private String eventTimeZone;
 
 }
