@@ -114,8 +114,16 @@ export function BookingModal({ event, open, onClose }: BookingModalProps) {
     }, [availableTickets]);
 
     const handleProceedToPayment = () => {
-        if (!name || !email) {
+        if (!name.trim() || !email.trim()) {
             toast.error('Please fill in your name and email');
+            return;
+        }
+        // Lightweight email shape check. The backend is still authoritative
+        // on uniqueness/deliverability; this just catches obvious typos before
+        // a network round trip.
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+            toast.error('Please enter a valid email address');
             return;
         }
         if (quantity < 1 || quantity > availableTickets) {

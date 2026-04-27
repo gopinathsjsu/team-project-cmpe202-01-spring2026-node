@@ -206,6 +206,24 @@ export function CreateEvent() {
       return;
     }
 
+    // Validate the date/time window before submitting. The backend will also
+    // reject invalid windows, but failing fast on the client gives a clearer
+    // message and avoids a wasted round trip + half-saved ticket types.
+    const startMs = Date.parse(`${formData.startDate}T${formData.startTime}:00Z`);
+    const endMs = Date.parse(`${formData.endDate}T${formData.endTime}:00Z`);
+    if (Number.isNaN(startMs) || Number.isNaN(endMs)) {
+      toast.error('Please enter a valid start and end date/time');
+      return;
+    }
+    if (endMs <= startMs) {
+      toast.error('End date/time must be after the start date/time');
+      return;
+    }
+    if (status === 'SUBMITTED' && startMs <= Date.now()) {
+      toast.error('Event start must be in the future when submitting for approval');
+      return;
+    }
+
     const validTicketRows = ticketTypeRows.filter((r) => r.ticketType.trim() && r.totalQuantity > 0);
     if (validTicketRows.length === 0) {
       toast.error('Add at least one ticket type with a name and quantity');
