@@ -1,15 +1,16 @@
 package com.node.notificationService.events;
 
-import com.fasterxml.jackson.annotation.JsonSubTypes;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
-@JsonSubTypes({
-    @JsonSubTypes.Type(value = BookingConfirmedEvent.class, name = "BOOKING_CONFIRMED"),
-    @JsonSubTypes.Type(value = BookingPendingEvent.class,   name = "BOOKING_PENDING"),
-    @JsonSubTypes.Type(value = BookingCancelledEvent.class, name = "BOOKING_CANCELLED"),
-    @JsonSubTypes.Type(value = NewEventPublishedEvent.class, name = "NEW_EVENT_PUBLISHED")
-})
+/**
+ * Marker for notification payloads carried over Kafka. Polymorphism on the wire is
+ * handled by Spring Kafka's `__TypeId__` header (set by the producer-side
+ * JsonSerializer, resolved against `spring.json.trusted.packages` on the consumer)
+ * — there is no JSON-body discriminator. Annotating this interface with
+ * @JsonTypeInfo would make Jackson demand a `"type"` property in the body and
+ * fail every deserialize, so it is intentionally absent.
+ *
+ * The sealed `permits` clause is kept for exhaustive `instanceof` switches in
+ * NotificationConsumer; it has no effect on serialization.
+ */
 public sealed interface NotificationEvent
     permits BookingConfirmedEvent, BookingPendingEvent, BookingCancelledEvent, NewEventPublishedEvent {
 }
