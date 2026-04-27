@@ -42,14 +42,26 @@ export function BookingModal({ event, open, onClose }: BookingModalProps) {
 
     const api = runAPI();
 
-    const eventIdStr = String(event.eventId ?? (event as any).id ?? '');
+    const eventIdStr = String(event.eventId ?? '');
+
+    // If the auth state changes while the modal is open (login from another tab,
+    // token refresh, profile update), keep the prefilled name/email in sync with
+    // the new identity instead of holding the values captured at first render.
+    useEffect(() => {
+        setName(currentUser?.name ?? '');
+        setEmail(currentUser?.email ?? '');
+    }, [currentUser?.id, currentUser?.email, currentUser?.name]);
 
     useEffect(() => {
         if (!open || !eventIdStr) return;
         setStep('details');
         setQuantity(1);
+        // Guard against setState-after-unmount and against a stale response
+        // overwriting state if the user closes and reopens the modal quickly.
+        let cancelled = false;
         api.getTicketTypesForEvent(eventIdStr)
             .then((list) => {
+                if (cancelled) return;
                 setTicketTypes(list);
                 if (list.length > 0) {
                     setSelectedTicketTypeName(list[0].ticketType);
@@ -58,14 +70,18 @@ export function BookingModal({ event, open, onClose }: BookingModalProps) {
                 }
             })
             .catch((err: unknown) => {
+                if (cancelled) return;
                 console.error(err);
                 const msg =
                     (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-                    'Could not load ticket types. Ensure booking service is running (port 8082) and the dev proxy is active.';
+                    'Could not load ticket types. Please try again or contact support.';
                 toast.error(msg);
                 setTicketTypes([]);
                 setSelectedTicketTypeName('General');
             });
+        return () => {
+            cancelled = true;
+        };
     }, [open, eventIdStr]);
 
     const ticketsSold = typeof event.ticketsSold === 'number' ? event.ticketsSold : 0;
@@ -120,7 +136,7 @@ export function BookingModal({ event, open, onClose }: BookingModalProps) {
         }
 
         setProcessing(true);
-        const eventId = event.eventId ?? (event as any).id ?? '';
+        const eventId = event.eventId ?? '';
         if (!eventId) {
             toast.error('Invalid event');
             setProcessing(false);
@@ -143,8 +159,12 @@ export function BookingModal({ event, open, onClose }: BookingModalProps) {
             await api.addBooking(booking, selectedTicketTypeName || undefined);
             setStep('confirmed');
             toast.success(`Successfully booked ${quantity} ticket(s)!`);
-        } catch (err: any) {
-            const msg = err.response?.data?.message ?? err.message ?? 'Booking failed';
+        } catch (err: unknown) {
+            const msg =
+                (err as { response?: { data?: { message?: string } }; message?: string })
+                    ?.response?.data?.message ??
+                (err as { message?: string })?.message ??
+                'Booking failed';
             toast.error(msg);
         } finally {
             setProcessing(false);
