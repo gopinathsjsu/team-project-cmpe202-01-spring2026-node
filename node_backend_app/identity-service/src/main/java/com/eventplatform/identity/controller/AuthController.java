@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
@@ -63,6 +65,7 @@ public class AuthController {
     @PostMapping("/logout")
     @Operation(summary = "Logout and revoke all refresh tokens")
     public ResponseEntity<MessageResponse> logout(@AuthenticationPrincipal UserPrincipal principal) {
+        log.debug("POST /logout received: userId={}", principal != null ? principal.getId() : null);
         authService.logout(principal.getId());
         return ResponseEntity.ok(MessageResponse.builder().message("Logged out successfully").build());
     }

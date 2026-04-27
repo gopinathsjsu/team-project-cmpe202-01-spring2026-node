@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Structured (JSON) logging via logstash-logback-encoder.
+  Each line is a single JSON object with timestamp, level, logger, thread,
+  service name (from spring.application.name), message, and any MDC fields.
+  Stack traces are emitted as a single field, not multiline, so log
+  aggregators (ELK / Loki / Datadog) ingest them cleanly.
+
+  Per-package level overrides are still controlled via application.properties
+  (logging.level.<package>=DEBUG etc.), which Spring applies on top of this
+  config.
+-->
+<configuration>
+    <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="unknown"/>
+
+    <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"service":"${appName}"}</customFields>
+            <includeMdcKeyName>traceId</includeMdcKeyName>
+            <includeMdcKeyName>spanId</includeMdcKeyName>
+            <includeMdcKeyName>userId</includeMdcKeyName>
+            <includeMdcKeyName>requestId</includeMdcKeyName>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="JSON"/>
+    </root>
+</configuration>

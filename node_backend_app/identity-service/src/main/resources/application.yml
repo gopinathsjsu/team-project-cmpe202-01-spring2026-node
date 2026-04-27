@@ -58,7 +58,9 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: method
 
+# Pattern/encoder configured in logback-spring.xml (JSON output).
 logging:
   level:
+    root: INFO
     com.eventplatform.identity: DEBUG
     org.springframework.security: INFO
