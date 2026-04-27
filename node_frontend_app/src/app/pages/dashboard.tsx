@@ -24,7 +24,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { runAPI } from '../api';
 import { useAuth } from '../context/AuthContext';
-import type { OrganizerEventSummary, UserBooking } from '../types';
+import type { Event, OrganizerEventSummary, UserBooking } from '../types';
 import { resolveEventImageUrl } from '@/lib/eventImageStorage';
 
 const createGoogleCalendarLink = (event: any) => {
@@ -53,7 +53,7 @@ export function Dashboard() {
 
     const api = runAPI();
 
-    const [events, setEvents] = useState<any[]>([]);
+    const [events, setEvents] = useState<Event[]>([]);
     const [organizerSummary, setOrganizerSummary] = useState<OrganizerEventSummary | null>(null);
     const [orgTab, setOrgTab] = useState('all');
     const [orgPage, setOrgPage] = useState(0);
@@ -61,7 +61,7 @@ export function Dashboard() {
     const [orgTotalPages, setOrgTotalPages] = useState(0);
     const [orgLoading, setOrgLoading] = useState(false);
 
-    const [myBookings, setMyBookings] = useState<any[]>([]);
+    const [myBookings, setMyBookings] = useState<UserBooking[]>([]);
     const [bookingCounts, setBookingCounts] = useState<{
         totalBookings: number;
         upcomingBookings: number;
@@ -694,7 +694,7 @@ function EventsList({
 
     return (
         <div className="space-y-4">
-            {events.map((event: any) => {
+            {events.map((event) => {
                 const revenue = (event.ticketsSold ?? 0) * (event.ticketPrice ?? 0);
 
                 return (

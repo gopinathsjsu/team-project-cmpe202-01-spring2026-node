@@ -245,7 +245,7 @@ export function CreateEvent() {
     setSubmitting(true);
     try {
       const created = await api.addEvent(newEvent);
-      const eventId = String(created?.eventId ?? (created as any)?.id ?? '');
+      const eventId = String(created?.eventId ?? '');
       if (!eventId || eventId === 'null') {
         toast.error('Event created but no ID returned; ticket types were not saved.');
         navigate('/dashboard');
@@ -262,19 +262,23 @@ export function CreateEvent() {
 
       try {
         await api.assignTicketTypesToEvent(eventId, items);
-      } catch (ticketErr: any) {
+      } catch (ticketErr: unknown) {
         console.error(ticketErr);
+        const msg = (ticketErr as { response?: { data?: { message?: string } } })
+            ?.response?.data?.message;
         toast.error(
-          ticketErr?.response?.data?.message ??
+          msg ??
           'Event saved, but ticket types failed to sync. Edit the event to add them in the booking service.'
         );
       }
 
       toast.success(`Event ${status === 'DRAFT' ? 'saved as draft' : 'submitted'} successfully!`);
       navigate('/dashboard');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err?.response?.data?.message ?? 'Failed to create event');
+      const msg = (err as { response?: { data?: { message?: string } } })
+          ?.response?.data?.message;
+      toast.error(msg ?? 'Failed to create event');
     } finally {
       setSubmitting(false);
     }
@@ -320,8 +324,9 @@ export function CreateEvent() {
         setFormData((prev) => ({ ...prev, image: ref }));
         setImageUrlDraft('');
         toast.success('Image saved locally; reference will be stored in the database');
-      } catch (err: any) {
-        toast.error(err?.message ?? 'Could not store image');
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : null;
+        toast.error(msg ?? 'Could not store image');
       }
     };
     reader.onerror = () => {
