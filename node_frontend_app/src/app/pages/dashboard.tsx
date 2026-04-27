@@ -85,61 +85,80 @@ export function Dashboard() {
     }, [currentUser, navigate]);
 
     useEffect(() => {
-        if (currentUser?.id && currentUser.role === 'ORGANIZER') {
-            api.getOrganizerSummary(currentUser.id).then(setOrganizerSummary).catch(console.error);
-        }
+        if (!currentUser?.id || currentUser.role !== 'ORGANIZER') return;
+        let cancelled = false;
+        api.getOrganizerSummary(currentUser.id)
+            .then((data) => { if (!cancelled) setOrganizerSummary(data); })
+            .catch((err) => { if (!cancelled) console.error(err); });
+        return () => {
+            cancelled = true;
+        };
     }, [currentUser?.id, currentUser?.role]);
 
     useEffect(() => {
-        if (currentUser?.role === 'ADMIN') {
-            api.getAdminUsers(0, 100)
-                .then((data) => {
-                    const users = Array.isArray(data.users) ? data.users : [];
-                    setTotalUserCount(data.totalElements ?? users.length);
-                    setAdminUserCount(users.filter((u) => u.role === 'ADMIN').length);
-                })
-                .catch(() => {
-                    setTotalUserCount(0);
-                    setAdminUserCount(0);
-                });
-        }
+        if (currentUser?.role !== 'ADMIN') return;
+        let cancelled = false;
+        api.getAdminUsers(0, 100)
+            .then((data) => {
+                if (cancelled) return;
+                const users = Array.isArray(data.users) ? data.users : [];
+                setTotalUserCount(data.totalElements ?? users.length);
+                setAdminUserCount(users.filter((u) => u.role === 'ADMIN').length);
+            })
+            .catch(() => {
+                if (cancelled) return;
+                setTotalUserCount(0);
+                setAdminUserCount(0);
+            });
+        return () => {
+            cancelled = true;
+        };
     }, [currentUser?.role]);
 
     useEffect(() => {
-        if (currentUser?.id && currentUser.role === 'ORGANIZER') {
-            setOrgLoading(true);
-            api
-                .getOrganizerEventsPaged({
-                    organizerId: currentUser.id,
-                    tab: orgTab,
-                    page: orgPage,
-                    size: 8,
-                })
-                .then((res) => {
-                    setEvents(Array.isArray(res.content) ? res.content : []);
-                    setOrgTotal(res.totalElements);
-                    setOrgTotalPages(res.totalPages);
-                })
-                .catch(console.error)
-                .finally(() => setOrgLoading(false));
-        }
+        if (!currentUser?.id || currentUser.role !== 'ORGANIZER') return;
+        let cancelled = false;
+        setOrgLoading(true);
+        api
+            .getOrganizerEventsPaged({
+                organizerId: currentUser.id,
+                tab: orgTab,
+                page: orgPage,
+                size: 8,
+            })
+            .then((res) => {
+                if (cancelled) return;
+                setEvents(Array.isArray(res.content) ? res.content : []);
+                setOrgTotal(res.totalElements);
+                setOrgTotalPages(res.totalPages);
+            })
+            .catch((err) => { if (!cancelled) console.error(err); })
+            .finally(() => { if (!cancelled) setOrgLoading(false); });
+        return () => {
+            cancelled = true;
+        };
     }, [currentUser?.id, currentUser?.role, orgTab, orgPage]);
 
     useEffect(() => {
         if (currentUser?.role !== 'ATTENDEE' || !currentUser?.id) return;
+        let cancelled = false;
         setAttendeeBookingsLoading(true);
         Promise.all([
             api.getUserBookingCounts(currentUser.id),
             api.getUserBookingsPaged({ userId: currentUser.id, page: attendeeBookingsPage, size: 10 }),
         ])
             .then(([counts, paged]) => {
+                if (cancelled) return;
                 setBookingCounts(counts);
                 setMyBookings(Array.isArray(paged.content) ? paged.content : []);
                 setAttendeeBookingsTotal(paged.totalElements);
                 setAttendeeBookingsTotalPages(paged.totalPages);
             })
-            .catch(console.error)
-            .finally(() => setAttendeeBookingsLoading(false));
+            .catch((err) => { if (!cancelled) console.error(err); })
+            .finally(() => { if (!cancelled) setAttendeeBookingsLoading(false); });
+        return () => {
+            cancelled = true;
+        };
     }, [currentUser?.id, currentUser?.role, attendeeBookingsPage]);
 
     // Attendee Dashboard
