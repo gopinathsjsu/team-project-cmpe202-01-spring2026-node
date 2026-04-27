@@ -32,8 +32,10 @@ public interface EventRepository extends JpaRepository<Events, String> {
     @Query("SELECT COALESCE(SUM(e.maxCapacity), 0) FROM Events e WHERE e.eventOwnerId = :ownerId")
     Long sumMaxCapacityForOrganizer(@Param("ownerId") String ownerId);
 
+    // The :q parameter must be non-null (callers pass "" for "no filter").
+    // A null String is bound as bytea by the Postgres driver and breaks lower().
     @Query("SELECT e FROM Events e WHERE e.status = 'PUBLISHED' AND e.eventStartInstant > CURRENT_TIMESTAMP AND " +
-           "(:q IS NULL OR LOWER(e.eventName) LIKE LOWER(CONCAT('%', :q, '%')) OR " +
+           "(LOWER(e.eventName) LIKE LOWER(CONCAT('%', :q, '%')) OR " +
            "LOWER(e.eventDescription) LIKE LOWER(CONCAT('%', :q, '%')))")
     Page<Events> findActiveEventsPage(@Param("q") String q, Pageable pageable);
 
@@ -62,10 +64,12 @@ public interface EventRepository extends JpaRepository<Events, String> {
     @Query("DELETE FROM Events")
     void deleteAllEvents();
 
+    // :q must be non-null (callers pass "" for "no filter"). See findActiveEventsPage.
+    // :status remains nullable -- enums are bound with explicit type so they don't
+    // hit the bytea inference issue.
     @Query("SELECT e FROM Events e LEFT JOIN User u ON e.eventOwnerId = u.userId WHERE " +
            "(:status IS NULL OR e.status = :status) AND " +
-           "((:q IS NULL OR TRIM(:q) = '') OR " +
-           "LOWER(e.eventName) LIKE LOWER(CONCAT('%', :q, '%')) OR " +
+           "(LOWER(e.eventName) LIKE LOWER(CONCAT('%', :q, '%')) OR " +
            "LOWER(COALESCE(u.username, '')) LIKE LOWER(CONCAT('%', :q, '%')))")
     Page<Events> findAdminPage(@Param("status") EventStatus status, @Param("q") String q, Pageable pageable);
 }

@@ -82,14 +82,19 @@ public class EventManagementServiceImpl implements EventManagementService {
 
     @Override
     public Page<EventInfoDto> getAdminEventsPage(EventStatus status, String q, Pageable pageable) {
-        String qq = (q == null || q.isBlank()) ? null : q.trim();
+        // Always pass a non-null search string. When q is blank we send "" so
+        // the LIKE matches everything. Passing null lets the Postgres JDBC
+        // driver infer the parameter type as bytea, which then breaks
+        // lower()/trim() in the query (function lower(bytea) does not exist).
+        String qq = (q == null) ? "" : q.trim();
         Page<Events> page = eventRepository.findAdminPage(status, qq, pageable);
         return page.map(this::convertToDto);
     }
 
     @Override
     public Page<EventInfoDto> getActiveEventsPage(String q, Pageable pageable) {
-        String qq = (q == null || q.isBlank()) ? null : q.trim();
+        // See getAdminEventsPage: never pass null for the search term.
+        String qq = (q == null) ? "" : q.trim();
         return eventRepository.findActiveEventsPage(qq, pageable).map(this::convertToDto);
     }
 
