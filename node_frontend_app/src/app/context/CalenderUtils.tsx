@@ -1,5 +1,30 @@
 import type { Event } from '../types';
 import { format } from 'date-fns';
+import { fromZonedTime } from 'date-fns-tz';
+
+/**
+ * Convert a date, time, and timezone to UTC ISO string
+ * @param dateStr - Date string in YYYY-MM-DD format
+ * @param timeStr - Time string in HH:MM format
+ * @param timezone - Timezone identifier (e.g., "America/New_York")
+ * @returns ISO string in UTC (e.g., "2026-05-15T18:30:00Z")
+ */
+export function convertToUTCInstant(dateStr: string, timeStr: string, timezone: string): string {
+  try {
+    // Create a date-time string in local time format
+    const localDateTimeStr = `${dateStr}T${timeStr}:00`;
+    
+    // Convert from local timezone to UTC
+    const utcDate = fromZonedTime(localDateTimeStr, timezone);
+    
+    // Return ISO string
+    return utcDate.toISOString();
+  } catch (error) {
+    console.error('Error converting timezone:', error);
+    // Fallback: treat as UTC
+    return `${dateStr}T${timeStr}:00Z`;
+  }
+}
 
 /**
  * Generate a Google Calendar add event URL

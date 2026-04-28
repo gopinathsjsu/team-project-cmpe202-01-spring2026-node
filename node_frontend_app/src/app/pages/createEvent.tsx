@@ -230,20 +230,25 @@ export function CreateEvent() {
       return;
     }
 
+    // Calculate values from ticket types for the request payload
+    const calculatedMaxCapacity = ticketTypeRows.reduce((sum, row) => sum + row.totalQuantity, 0);
+    const calculatedWaitlistCapacity = ticketTypeRows.reduce((sum, row) => sum + row.waitlistCapacity, 0);
+    const calculatedTicketPrice = ticketTypeRows.length > 0 ? Math.min(...ticketTypeRows.map(r => r.price)) : 0;
+
     const newEvent: Event = {
       eventId: null,
       eventName: formData.eventName,
       eventDescription: formData.eventDescription,
       categories: formData.categories, //formData.categories all categories info with selected categories  ,
-      maxCapacity: formData.maxCapacity,
-      waitlistCapacity: formData.waitlistCapacity,
+      maxCapacity: calculatedMaxCapacity,
+      waitlistCapacity: calculatedWaitlistCapacity,
       eventLocation: {
         locationName: formData.venue,
         locationAddress: formData.location,
         latitude: mapPosition?.[0] || null,
         longitude: mapPosition?.[1] || null
       },
-      ticketPrice: formData.price,
+      ticketPrice: calculatedTicketPrice,
       imageUrl: formData.image,
       eventStartDate: `${formData.startDate}T${formData.startTime}:00Z`,
       eventEndDate: `${formData.endDate}T${formData.endTime}:00Z`,
@@ -617,19 +622,25 @@ export function CreateEvent() {
                 />
 
                 {/* Pricing & Capacity */}
+                { ticketTypeRows.some(r => r.price > 0) && (
+                  <div className="p-4 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-700">
+                    Note: You have set ticket types with a price greater than $0. The "Display ticket price" field below will be ignored and the lowest-priced ticket type will be shown on event cards instead.
+                  </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="price">Display ticket price ($)</Label>
+                    <Label htmlFor="price">Display ticket price ($) *</Label>
                     <Input
                       id="price"
                       type="number"
                       min="0"
                       step="0.01"
-                      value={formData.price}
+                      value={ticketTypeRows.length > 0 ? Math.min(...ticketTypeRows.map(r => r.price)) : 0}
+                      //min value of ticket types price
                       onChange={(e) => setFormData(prev => ({ ...prev, price: Number(e.target.value) }))}
                       placeholder="0.00"
                     />
-                    <p className="text-xs text-gray-500">Shown on cards; actual checkout uses ticket types above</p>
+                    <p className="text-xs text-gray-500">Auto-calculated from lowest ticket type price</p>
                   </div>
 
                   <div className="space-y-2">
@@ -638,10 +649,11 @@ export function CreateEvent() {
                       id="maxCapacity"
                       type="number"
                       min="1"
-                      value={formData.maxCapacity}
+                      value={ticketTypeRows.reduce((sum, row) => sum + row.totalQuantity, 0)}
                       onChange={(e) => setFormData(prev => ({ ...prev, maxCapacity: Number(e.target.value) }))}
                       required
                     />
+                    <p className="text-xs text-gray-500">Auto-calculated from ticket type quantities</p>
                   </div>
 
                   <div className="space-y-2">
@@ -650,10 +662,11 @@ export function CreateEvent() {
                       id="waitlistCapacity"
                       type="number"
                       min="0"
-                      value={formData.waitlistCapacity}
+                      value={ticketTypeRows.reduce((sum, row) => sum + row.waitlistCapacity, 0)}
                       onChange={(e) => setFormData(prev => ({ ...prev, waitlistCapacity: Number(e.target.value) }))}
                       required
                     />
+                    <p className="text-xs text-gray-500">Auto-calculated from ticket type waitlists</p>
                   </div>
                 </div>
 

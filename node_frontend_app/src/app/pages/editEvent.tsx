@@ -260,18 +260,26 @@ export function EditEvent() {
             return;
         }
 
+        // Calculate values from ticket types for the request payload
+        const calculatedMaxCapacity = ticketTypeRows.reduce((sum, row) => sum + row.totalQuantity, 0);
+        const calculatedWaitlistCapacity = ticketTypeRows.reduce((sum, row) => sum + row.waitlistCapacity, 0);
+        const calculatedTicketPrice = ticketTypeRows.length > 0 ? Math.min(...ticketTypeRows.map(r => r.price)) : 0;
+
         const updatedEvent = {
             ...event,
             ...formData,
             imageUrl: formData.image,
-            ticketPrice: Number(formData.ticketPrice),
-            maxCapacity: Number(formData.maxCapacity),
+            ticketPrice: calculatedTicketPrice,
+            maxCapacity: calculatedMaxCapacity,
+            waitlistCapacity: calculatedWaitlistCapacity,
             eventStartInstant: `${formData.startDate}T${formData.startTime}:00Z`,
             eventEndInstant: `${formData.endDate}T${formData.endTime}:00Z`,
             eventStartDate: `${formData.startDate}T${formData.startTime}:00Z`,
             eventEndDate: `${formData.endDate}T${formData.endTime}:00Z`,
             tags: typeof formData.tags === 'string' ? formData.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
         };
+        console.log('Submitting with form data:', updatedEvent);
+        
 
         setSaving(true);
         try {
@@ -647,22 +655,27 @@ export function EditEvent() {
                             )}
 
                             {/* Pricing & Capacity */}
+                            { ticketTypeRows.some(r => r.price > 0) && (
+                                <div className="p-4 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-700">
+                                    Note: You have set ticket types with a price greater than $0. The "Display ticket price" field below will be ignored and the lowest-priced ticket type will be shown on event cards instead.
+                                </div>
+                            )}
                             <div className="space-y-4">
                                 <h2 className="text-xl font-semibold">Pricing & Capacity</h2>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="space-y-2">
                                         <Label htmlFor="price">Display ticket price ($) *</Label>
                                         <Input
                                             id="price"
                                             type="number"
                                             min="0"
                                             step="0.01"
-                                            value={formData.ticketPrice}
+                                            value={ticketTypeRows.length > 0 ? Math.min(...ticketTypeRows.map(r => r.price)) : 0}
                                             onChange={(e) => handleChange('ticketPrice', parseFloat(e.target.value) || 0)}
                                             required
                                         />
-                                        <p className="text-sm text-gray-500 mt-1">Shown on listings; booking uses ticket types above</p>
+                                        <p className="text-xs text-gray-500">Auto-calculated from lowest ticket type price</p>
                                     </div>
 
                                     <div className="space-y-2">
@@ -671,10 +684,11 @@ export function EditEvent() {
                                             id="maxCapacity"
                                             type="number"
                                             min="1"
-                                            value={formData.maxCapacity}
+                                            value={ticketTypeRows.reduce((sum, row) => sum + row.totalQuantity, 0)}
                                             onChange={(e) => setFormData(prev => ({ ...prev, maxCapacity: Number(e.target.value) }))}
                                             required
                                         />
+                                        <p className="text-xs text-gray-500">Auto-calculated from ticket type quantities</p>
                                     </div>
 
                                     <div className="space-y-2">
@@ -683,10 +697,11 @@ export function EditEvent() {
                                             id="waitlistCapacity"
                                             type="number"
                                             min="0"
-                                            value={formData.waitlistCapacity}
+                                            value={ticketTypeRows.reduce((sum, row) => sum + row.waitlistCapacity, 0)}
                                             onChange={(e) => setFormData(prev => ({ ...prev, waitlistCapacity: Number(e.target.value) }))}
                                             required
                                         />
+                                        <p className="text-xs text-gray-500">Auto-calculated from ticket type waitlists</p>
                                     </div>
                                 </div>
                             </div>
