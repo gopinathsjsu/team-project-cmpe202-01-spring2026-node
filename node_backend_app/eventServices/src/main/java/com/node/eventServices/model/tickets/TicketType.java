@@ -1,4 +1,4 @@
-package com.node.eventServices.model.events;
+package com.node.eventServices.model.tickets;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -35,8 +35,7 @@ public class TicketType {
     private Integer totalQuantity;
 
     @Column(nullable = false)
-    @Builder.Default
-    private Integer waitlistCapacity = 0;
+    private Integer waitlistCapacity;
 
     @Column(nullable = false)
     @Builder.Default
@@ -50,4 +49,3 @@ public class TicketType {
         return getAvailableQuantity() >= requested;
     }
 }
-
