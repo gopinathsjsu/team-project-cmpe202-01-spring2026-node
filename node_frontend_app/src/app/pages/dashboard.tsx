@@ -70,6 +70,7 @@ export function Dashboard() {
     const [attendeeBookingsLoading, setAttendeeBookingsLoading] = useState(false);
     const [adminUserCount, setAdminUserCount] = useState(0);
     const [totalUserCount, setTotalUserCount] = useState(0);
+    const [organizersCount, setOrganizersCount] = useState(0);
     //let myEvents: any[] = [];
 
     const authContext = useAuth();
@@ -99,14 +100,17 @@ export function Dashboard() {
         api.getAdminUsers(0, 100)
             .then((data) => {
                 if (cancelled) return;
-                const users = Array.isArray(data.users) ? data.users : [];
+                const users = Array.isArray(data) ? data : [];
+                console.log(users);
                 setTotalUserCount(data.totalElements ?? users.length);
                 setAdminUserCount(users.filter((u) => u.role === 'ADMIN').length);
+                setOrganizersCount(users.filter((u) => u.role === 'ORGANIZER').length);
             })
             .catch(() => {
                 if (cancelled) return;
                 setTotalUserCount(0);
                 setAdminUserCount(0);
+                setOrganizersCount(0);
             });
         return () => {
             cancelled = true;
@@ -373,11 +377,11 @@ export function Dashboard() {
                         </Card>
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-sm font-medium">Navigation</CardTitle>
+                                <CardTitle className="text-sm font-medium">Organizers</CardTitle>
                                 <Eye className="h-4 w-4 text-gray-500" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-sm text-gray-600">Use quick actions below.</div>
+                                <div className="text-2xl font-bold">{organizersCount}</div>
                             </CardContent>
                         </Card>
                     </div>
@@ -737,6 +741,7 @@ function EventsList({
                                 <Button
                                     size="sm"
                                     variant="outline"
+                                    className='text-green-600 border-green-600 hover:bg-green-50'
                                     onClick={() => navigate(`/events/${event.eventId}`)}
                                 >
                                     <Eye className="h-4 w-4 mr-1" />
@@ -745,7 +750,8 @@ function EventsList({
                                 <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => navigate(`/edit-event/${event.eventId}`)}
+                                    className='text-blue-600 border-blue-600 hover:bg-blue-50'
+                                    onClick={() => navigate(`/editEvent/${event.eventId}`)}
                                 >
                                     <Edit className="h-4 w-4 mr-1" />
                                     Edit
@@ -766,6 +772,8 @@ function EventsList({
                                     >
                                         Unpublish
                                     </Button>}
+                                   
+                                {(event.status === 'PUBLISHED' && event.ticketsSold > 0) &&
                                 <Button
                                     size="sm"
                                     variant="outline"
@@ -774,13 +782,15 @@ function EventsList({
                                     <Users className="h-4 w-4 mr-1" />
                                     Attendees
                                 </Button>
+                                }
+                                
                                 <Button
                                     size="sm"
                                     variant="outline"
+                                    className="text-red-600 border-red-600 hover:bg-red-50"
                                     onClick={() => onDelete(event.eventId)}
                                 >
-                                    <Trash2 className="h-4 w-4 mr-1" />
-                                    Delete
+                                    <Trash2 className="h-4 w-4" />
                                 </Button>
                                 {/* <Button
                                     size="sm"

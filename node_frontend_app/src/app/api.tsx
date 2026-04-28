@@ -383,10 +383,10 @@ export function runAPI() {
       const response = await axios.put(`${API_BASE_URL}/events/${id}/approve?approverId=${approverId}`);
       return response.data;
     },
-    rejectEvent: async (id: string, adminId: string, reason: string): Promise<Event> => {
+    rejectEvent: async (id: string, adminId: string, reason: string = 'Rejected by admin'): Promise<Event> => {
       const params = new URLSearchParams({ adminId });
       if (reason) params.set('reason', reason);
-      const response = await axios.put(`${API_BASE_URL}/events/${id}/reject?${params.toString()}`);
+      const response = await axios.put(`${API_BASE_URL}/events/${id}/reject?${params.toString()}`, { reason });
       return response.data;
     },
     updateEventStatus: async (id: string, status: string): Promise<Event> => {
@@ -657,7 +657,8 @@ export function runAPI() {
 
     // Admin user management
     getAdminUsers: async (page = 0, size = 20): Promise<AdminUsersPage> => {
-      const response = await axios.get(`${API_BASE_URL}/admin/users?page=${page}&size=${size}`);
+      //const response = await axios.get(`${API_BASE_URL}/admin/users?page=${page}&size=${size}`);
+      const response = await axios.get(`${API_BASE_URL}/auth/allUsers`);
       return response.data;
     },
     createAdminUser: async (payload: CreateAdminPayload): Promise<{

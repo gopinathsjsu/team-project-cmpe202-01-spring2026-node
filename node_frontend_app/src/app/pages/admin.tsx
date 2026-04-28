@@ -329,8 +329,11 @@ export function AdminPanel() {
     };
 
     const handleRejectEvent = (eventId: string) => {
+        // add comment while rejecting an event with a prompt
+        const comment = prompt('Please provide a reason for rejecting this event:');
+        if (comment === null) return;
         if (confirm('Are you sure you want to reject this event?')) {
-            api.rejectEvent(eventId, currentUser?.id, 'Rejected by admin').then(() => {
+            api.rejectEvent(eventId, currentUser?.id, comment).then(() => {
                 toast.success('Event rejected');
                 refreshEvents();
             }).catch(() => toast.error('Failed to reject event'));
@@ -763,7 +766,7 @@ export function AdminPanel() {
                     </CardContent>
                 </Card>
 
-                <Card className="mt-8">
+                {/* <Card className="mt-8">
                     <CardHeader>
                         <CardTitle>Admin User Management</CardTitle>
                         <CardDescription>Create admins and browse users with pagination</CardDescription>
@@ -776,12 +779,12 @@ export function AdminPanel() {
                             <Input type="email" placeholder="Email" value={newAdmin.email} onChange={(e) => setNewAdmin((prev) => ({ ...prev, email: e.target.value }))} />
                             <Input type="password" placeholder="Password" value={newAdmin.password} onChange={(e) => setNewAdmin((prev) => ({ ...prev, password: e.target.value }))} />
                         </div>
-                        <div className="flex justify-end mb-6">
+                        {/* <div className="flex justify-end mb-6">
                             <Button onClick={handleCreateAdmin}>
                                 <UserPlus className="h-4 w-4 mr-2" />
                                 Create Admin
                             </Button>
-                        </div>
+                        </div> * /}
 
                         <div className="space-y-3">
                             {usersData.users.map((user) => (
@@ -869,7 +872,9 @@ export function AdminPanel() {
                             </div>
                         </div>
                     </CardContent>
+
                 </Card>
+                */}
             </div>
         </div>
     );
@@ -1009,7 +1014,7 @@ function EventManagementList({
                                             <AlertTriangle className="h-4 w-4 mr-1" />
                                             To Submit
                                         </Button>
-                                        <Button
+                                        {/* <Button
                                             size="sm"
                                             variant="outline"
                                             onClick={() => onSuspend(event.eventId!)}
@@ -1017,10 +1022,11 @@ function EventManagementList({
                                         >
                                             <AlertTriangle className="h-4 w-4 mr-1" />
                                             Suspend
-                                        </Button>
+                                        </Button> */}
                                     </>
                                 )}
-
+                                 {st !== 'cancelled' && (
+                                    
                                 <Button
                                     size="sm"
                                     variant="outline"
@@ -1028,8 +1034,8 @@ function EventManagementList({
                                     className="text-red-600 border-red-600 hover:bg-red-50"
                                 >
                                     <Ban className="h-4 w-4 mr-1" />
-                                    Remove
-                                </Button>
+                                    Cancel
+                                </Button>)}
                             </div>
                         </div>
                     </div>

@@ -41,13 +41,13 @@ export default function AppRoutes() {
             <Route
                 path="/createEvent"
                 element={
-                    <ProtectedRoute allowedRoles={['ORGANIZER', 'ADMIN']}>
+                    <ProtectedRoute allowedRoles={['ORGANIZER']}>
                         <CreateEvent />
                     </ProtectedRoute>
                 }
             />
             <Route
-                path="/edit-event/:id"
+                path="/editEvent/:id"
                 element={
                     <ProtectedRoute allowedRoles={['ORGANIZER', 'ADMIN']}>
                         <EditEvent />
