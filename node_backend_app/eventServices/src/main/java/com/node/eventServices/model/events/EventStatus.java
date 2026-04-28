@@ -140,13 +140,13 @@ public enum EventStatus {
     PUBLISHED {
         @Override
         public Set<EventStatus> allowedTransitions() {
-            return EnumSet.of(COMPLETED, CANCELLED);
+            return EnumSet.of(SUBMITTED, COMPLETED, CANCELLED);
         }
     },
     REJECTED {
         @Override
         public Set<EventStatus> allowedTransitions() {
-            return EnumSet.of(DRAFT);
+            return EnumSet.of(SUBMITTED, DRAFT);
         }
     },
     COMPLETED {

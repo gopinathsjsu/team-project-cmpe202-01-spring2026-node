@@ -1,6 +1,6 @@
 package com.node.eventServices.repository;
 
-import com.node.eventServices.model.events.TicketType;
+import com.node.eventServices.model.tickets.TicketType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

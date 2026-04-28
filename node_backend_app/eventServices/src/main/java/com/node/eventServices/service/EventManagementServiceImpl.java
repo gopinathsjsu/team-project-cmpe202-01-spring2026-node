@@ -10,12 +10,10 @@ import com.node.eventServices.messaging.EventPublisher;
 import com.node.eventServices.model.User.User;
 import com.node.eventServices.model.events.EventCategory;
 import com.node.eventServices.model.events.EventStatus;
-import com.node.eventServices.model.events.TicketType;
+import com.node.eventServices.model.events.EventUpdates;
+import com.node.eventServices.model.tickets.TicketType;
 import com.node.eventServices.model.events.Events;
-import com.node.eventServices.repository.EventRepository;
-import com.node.eventServices.repository.TicketRepository;
-import com.node.eventServices.repository.TicketTypeRepository;
-import com.node.eventServices.repository.UserRepository;
+import com.node.eventServices.repository.*;
 import com.node.eventServices.utils.MapperUtils;
 import com.node.notificationService.events.NewEventPublishedEvent;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +33,8 @@ import org.springframework.data.domain.Pageable;
 @Slf4j
 @Service
 public class EventManagementServiceImpl implements EventManagementService {
+    @Autowired
+    private EventUpdatesRepository eventUpdatesRepository;
 
     @Autowired
     private EventRepository eventRepository;
@@ -208,7 +208,12 @@ public class EventManagementServiceImpl implements EventManagementService {
         event.setEventEndInstant(eventDetails.getEventEndInstant());
         event.setEventPublishInstant(eventDetails.getEventPublishInstant());
         event.setApproverId(eventDetails.getApproverId());
-        event.setStatus(eventDetails.getStatus());
+        if(event.getStatus() == EventStatus.REJECTED) {
+            log.info("Resubmitting rejected event id={} for approval", id);
+            event.transitionTo(EventStatus.SUBMITTED);
+        } else {
+            event.setStatus(eventDetails.getStatus());
+        }
         //event.setTicketType(eventDetails.getTicketType());
         event.setEventTimeZone(eventDetails.getEventTimeZone());
 
@@ -281,6 +286,14 @@ public class EventManagementServiceImpl implements EventManagementService {
         event.setApproverId(adminId);
 
         Events saved = eventRepository.save(event);
+        EventUpdates eventUpdates = EventUpdates.builder()
+                .eventId(eventId)
+                .adminId(adminId)
+                .previousStatus(previousStatus)
+                .newStatus(EventStatus.REJECTED)
+                .comments(reason)
+                .build();
+        eventUpdatesRepository.save(eventUpdates);
         log.info("Event id={} rejected: {} -> {}", eventId, previousStatus, saved.getStatus());
         return convertToDto(saved);
     }
@@ -381,7 +394,7 @@ public class EventManagementServiceImpl implements EventManagementService {
     private Long findTicketsSoldForEvent(String eventId) {
         return (long) ticketRepository.findByEventId(eventId)
                 .stream()
-                .mapToInt(TicketType::getSoldQuantity)
+                .mapToInt(t -> t.getSoldQuantity() != null ? t.getSoldQuantity() : 0)
                 .sum();
     }
 
@@ -389,12 +402,13 @@ public class EventManagementServiceImpl implements EventManagementService {
         String ownerName = userRepository.findById(event.getEventOwnerId())
                 .map(User::getProfileUsername)
                 .orElse("Unknown");
-        Long ticketsSold = findTicketsSoldForEvent(event.getEventId());
+        Long ticketsSold = 0L;//findTicketsSoldForEvent(event.getEventId());
         log.info("Tickets sold for event id={}: {}", event.getEventId(), ticketsSold);
         List<TicketType> ticketTypes = ticketTypeRepository.findByEventId(event.getEventId());
         log.info("Ticket types for event id={}: {}", event.getEventId(), ticketTypes);
         for (TicketType ticketType : ticketTypes) {
             log.info("Ticket type id={}: {}", ticketType.getId(), ticketType.getTicketType());
+            ticketsSold+= ticketType.getSoldQuantity();
         }
         return mapper.convertEventToDto(event, ownerName, ticketsSold);
     }
