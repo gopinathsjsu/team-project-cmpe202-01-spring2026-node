@@ -20,6 +20,7 @@ export default defineConfig({
       '/api/v1/bookings': { target: 'http://localhost:8082', changeOrigin: true },
       '/api/v1/ticket-types': { target: 'http://localhost:8082', changeOrigin: true },
       '/api/v1/events': { target: 'http://localhost:8080' },
+      '/api/v1/discover': { target: 'http://localhost:8084' },
 
     },
   },

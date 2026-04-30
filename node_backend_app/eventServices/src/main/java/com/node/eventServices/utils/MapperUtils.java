@@ -130,6 +130,7 @@ public class MapperUtils {
 
         List<EventCategory> categories = new ArrayList<>();
         if (request.getCategories() != null && !request.getCategories().isEmpty()) {
+            log.info("Mapping categories for event: {}", request.getCategories());
             for (String categoryId : request.getCategories()) {
                 EventCategory category = eventCategoryRepository.findByCategoryId(categoryId);
                 if (category != null) {

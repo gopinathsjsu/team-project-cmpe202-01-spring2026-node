@@ -8,6 +8,7 @@ import com.node.eventServices.model.events.Events;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDate;
 
 import com.node.eventServices.dto.EventAdminMetricsDto;
 import com.node.eventServices.dto.OrganizerEventSummaryDto;
@@ -43,4 +44,5 @@ public interface EventManagementService {
     List<EventInfoDto> getAllEventsWithDateAndStatus(String status, Instant date);
     List<TicketTypeResponse> getTicketTypesByEvent(String eventId);
     List<TicketTypeResponse> assignTicketTypesToEvent(String eventId, List<TicketTypeItemRequest> items);
+    void markEventsCompletedBefore(LocalDate today);
 }
