@@ -14,7 +14,7 @@ import { runAPI, newTicketTypeRow } from '../api';
 import type { Event, EventCategory, TicketTypeDraft } from '../types';
 import { TicketTypesEditor } from '../components/TicketTypesEditor';
 import { storeEventCoverDataUrl, resolveEventImageUrl } from '@/lib/eventImageStorage';
-
+//import { convertToUTCInstant } from '../context/CalenderUtils';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -250,10 +250,10 @@ export function CreateEvent() {
       },
       ticketPrice: calculatedTicketPrice,
       imageUrl: formData.image,
-      eventStartDate: `${formData.startDate}T${formData.startTime}:00Z`,
-      eventEndDate: `${formData.endDate}T${formData.endTime}:00Z`,
-      eventStartInstant: `${formData.startDate}T${formData.startTime}:00Z`,
-      eventEndInstant: `${formData.endDate}T${formData.endTime}:00Z`,
+      eventStartDate:  `${formData.startDate}T${formData.startTime}:-08:00`,
+      eventEndDate: `${formData.endDate}T${formData.endTime}:-08:00`,
+      eventStartInstant: `${formData.startDate}T${formData.startTime}:-08:00`,
+      eventEndInstant: `${formData.endDate}T${formData.endTime}:-08:00`,
       eventTimeZone: formData.eventTimeZone,
       eventPublishDate: new Date().toISOString(),
       eventOwnerId: currentUser?.id,
@@ -535,7 +535,7 @@ export function CreateEvent() {
                     </div>
                   </div>
 
-                  <div className="space-y-2 md:col-span-2">
+                  {/* <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="eventTimeZone">Timezone *</Label>
                     <Select
                       value={formData.eventTimeZone}
@@ -552,7 +552,7 @@ export function CreateEvent() {
                         <SelectItem value="UTC">UTC</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
+                  </div> */}
                 </div>
 
                 {/* Map Picker */}
@@ -751,7 +751,7 @@ export function CreateEvent() {
                 </div>
 
                 {/* Tags */}
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label htmlFor="tags">Tags</Label>
                   <div className="flex gap-2">
                     <Input
@@ -781,7 +781,7 @@ export function CreateEvent() {
                       ))}
                     </div>
                   )}
-                </div>
+                </div> */}
 
                 {/* Actions */}
                 <div className="flex gap-3 pt-6 border-t">
