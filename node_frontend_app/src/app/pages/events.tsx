@@ -4,7 +4,7 @@ import { EventCard } from "../components/EventCard";
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Search, Filter, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Filter, X, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import type { EventCategory, Event } from '../types';
 import { runAPI } from '../api';
@@ -170,6 +170,52 @@ export function AllEvents() {
         return filtered;
     }, [events, searchQuery, selectedCategories, priceFilter, sortBy]);
 
+    const handleNearMeFilter = () => {
+        if (!navigator.geolocation) {
+            alert('Geolocation is not supported by your browser');
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                // For simplicity, we'll just filter events that have a location within ~50km radius.
+                const nearbyEvents = events.filter(event => {
+                    if (!event.eventLocation || !event.eventLocation.latitude || !event.eventLocation.longitude) return false;
+                    const distance = getDistanceFromLatLonInKm(
+                        latitude,
+                        longitude,
+                        event.eventLocation.latitude,
+                        event.eventLocation.longitude
+                    );
+                    return distance <= 50; // 50km radius
+                });
+                setEvents(nearbyEvents);
+            },
+            (error) => {
+                console.error(error);
+                alert('Unable to retrieve your location');
+            }
+        );
+    };
+
+    // Haversine formula to calculate distance between two lat/lon points
+    const getDistanceFromLatLonInKm = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+        const R = 6371; // Radius of the earth in km
+        const dLat = deg2rad(lat2 - lat1);
+        const dLon = deg2rad(lon2 - lon1);
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c; // Distance in km
+    };
+
+    const deg2rad = (deg: number): number => {
+        return deg * (Math.PI / 180);
+    };
+
     const handleClearFilters = () => {
         setSearchQuery('');
         setselectedCategories([]);
@@ -190,7 +236,7 @@ export function AllEvents() {
                     <div className="relative mb-4">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                         <Input
-                            placeholder="Search events by name, location, or tags..."
+                            placeholder="Search events by name"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="pl-10"
@@ -284,6 +330,15 @@ export function AllEvents() {
                                 <SelectItem value="price-high">Price: High to Low</SelectItem>
                             </SelectContent>
                         </Select>
+
+                        {/* near me filter */}
+                        <Button
+                            variant="outline"
+                            onClick={handleNearMeFilter}
+                        >
+                            <MapPin className="h-4 w-4" />
+                            Near Me
+                        </Button>
 
                         {hasActiveFilters && (
                             <Button

@@ -20,29 +20,17 @@ import {
     Shield,
 } from 'lucide-react';
 
-import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { runAPI } from '../api';
 import { useAuth } from '../context/AuthContext';
 import type { Event, OrganizerEventSummary, UserBooking } from '../types';
 import { resolveEventImageUrl } from '@/lib/eventImageStorage';
-//import { convertUTCToLocal } from '../context/CalenderUtils';
+import { formatInZone, generateGoogleCalendarUrl } from '../context/CalenderUtils';
 
-const createGoogleCalendarLink = (event: any) => {
-    const title = encodeURIComponent(event.eventName || event.title || 'Event');
-    const details = encodeURIComponent(event.eventDescription || event.description || '');
-    const locationStr = event.eventLocation?.locationAddress || event.location || '';
-    const location = encodeURIComponent(locationStr);
-
-    // Prefer the exact Instant fields which contain the full UTC date/time (e.g., 2026-03-24T18:00:00Z)
-    const startDateStr = event.eventStartInstant || event.eventStartDate || event.startDate || new Date().toISOString();
-    const endDateStr = event.eventEndInstant || event.eventEndDate || event.endDate || new Date().toISOString();
+const createGoogleCalendarLink = (event: any): string => {
     try {
-        // Remove dashes, colons, and milliseconds to match Google Calendar format (YYYYMMDDTHHMMSSZ)
-        const start = new Date(startDateStr).toISOString().replace(/-|:|\.\d\d\d/g, '');
-        const end = new Date(endDateStr).toISOString().replace(/-|:|\.\d\d\d/g, '');
-        return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${details}&location=${location}`;
-    } catch (e) {
+        return generateGoogleCalendarUrl(event as Event);
+    } catch {
         return '#';
     }
 };
@@ -254,7 +242,8 @@ export function Dashboard() {
                                                 <div className="flex-1">
                                                     <h3 className="font-semibold mb-1">{booking.eventName}</h3>
                                                     <p className="text-sm text-gray-600 mb-2">
-                                                        {format(new Date(String(booking.eventStartInstant || '').replace('Z', '')), 'MMM dd, yyyy')} at {booking.eventStartInstant ? format(new Date(String(booking.eventStartInstant).replace('Z', '')), 'h:mm a') : ''}
+                                                        {formatInZone(booking.eventStartInstant, booking.eventTimeZone, 'MMM dd, yyyy h:mm a')}
+                                                        {booking.eventTimeZone ? ` (${booking.eventTimeZone})` : ''}
                                                     </p>
                                                     <div className="flex items-center gap-4 text-sm">
                                                         <span className="text-gray-600">
@@ -723,7 +712,8 @@ function EventsList({
                                 <div>
                                     <h3 className="font-semibold mb-1">{event.eventName}</h3>
                                     <p className="text-sm text-gray-600 mb-2">
-                                        {format(new Date(String(event.eventStartInstant || event.eventStartDate || '').replace('Z', '')), 'MMM dd, yyyy')} at {event.eventStartInstant ? format(new Date(String(event.eventStartInstant).replace('Z', '')), 'h:mm a') : ''}
+                                        {formatInZone(event.eventStartInstant || event.eventStartDate, event.eventTimeZone, 'MMM dd, yyyy h:mm a')}
+                                        {event.eventTimeZone ? ` (${event.eventTimeZone})` : ''}
                                     </p>
                                 </div>
                                 <Badge variant={event.status === 'PUBLISHED' ? 'default' : 'secondary'}>

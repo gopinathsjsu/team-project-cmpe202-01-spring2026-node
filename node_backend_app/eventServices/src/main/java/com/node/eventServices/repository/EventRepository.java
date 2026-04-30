@@ -14,6 +14,8 @@ import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDate;
 
 @Repository
 public interface EventRepository extends JpaRepository<Events, String> {
@@ -79,4 +81,8 @@ public interface EventRepository extends JpaRepository<Events, String> {
            "LOWER(COALESCE(u.username, '')) LIKE LOWER(CONCAT('%', :q, '%')))")
     Page<Events> findAllAdminEventsPage(@Param("q") String q, Pageable pageable);
 
+           @Modifying
+    @Transactional
+    @Query("update Events e set e.status = :toStatus where e.eventStartInstant < :today and e.status = :fromStatus")
+    int markEventsCompletedBefore(@Param("today") LocalDate today, @Param("fromStatus") EventStatus fromStatus, @Param("toStatus") EventStatus toStatus);
 }

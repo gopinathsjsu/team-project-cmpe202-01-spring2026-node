@@ -11,6 +11,12 @@ import { runAPI, newTicketTypeRow, ticketTypeApiToDraft } from '../api';
 import type { EventCategory, TicketTypeDraft } from '../types';
 import { TicketTypesEditor } from '../components/TicketTypesEditor';
 import { storeEventCoverDataUrl, resolveEventImageUrl } from '@/lib/eventImageStorage';
+import {
+    convertToUTCInstant,
+    extractZonedDateTime,
+    SUPPORTED_TIMEZONES,
+    describeTimeZone,
+} from '../context/CalenderUtils';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -73,7 +79,7 @@ export function EditEvent() {
         startTime: '',
         endDate: '',
         endTime: '',
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        eventTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         location: '',
         venue: '',
         ticketPrice: 0,
@@ -86,17 +92,20 @@ export function EditEvent() {
 
     useEffect(() => {
         if (event) {
+            const tz = event.eventTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const startParts = extractZonedDateTime(event.eventStartInstant, tz);
+            const endParts = extractZonedDateTime(event.eventEndInstant, tz);
             setFormData({
                 eventName: event.eventName || '',
                 eventDescription: event.eventDescription || '',
                 categories: Array.isArray(event.categories)
                     ? event.categories.map((c: any) => typeof c === 'string' ? c : String(c.categoryId || c.id))
                     : [],
-                startDate: event.eventStartInstant ? event.eventStartInstant.split('T')[0] : '',
-                startTime: event.eventStartInstant && event.eventStartInstant.includes('T') ? event.eventStartInstant.split('T')[1].substring(0, 5) : '',
-                endDate: event.eventEndInstant ? event.eventEndInstant.split('T')[0] : '',
-                endTime: event.eventEndInstant && event.eventEndInstant.includes('T') ? event.eventEndInstant.split('T')[1].substring(0, 5) : '',
-                timezone: event.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+                startDate: startParts.date,
+                startTime: startParts.time,
+                endDate: endParts.date,
+                endTime: endParts.time,
+                eventTimeZone: tz,
                 location: event.eventLocation?.locationAddress || '',
                 venue: event.eventLocation?.locationName || '',
                 ticketPrice: event.ticketPrice || 0,
@@ -260,7 +269,25 @@ export function EditEvent() {
             return;
         }
 
-        // Calculate values from ticket types for the request payload
+        if (!formData.startDate || !formData.startTime || !formData.endDate || !formData.endTime || !formData.eventTimeZone) {
+            toast.error('Please pick a start, end, and timezone');
+            return;
+        }
+
+        let startInstantIso: string;
+        let endInstantIso: string;
+        try {
+            startInstantIso = convertToUTCInstant(formData.startDate, formData.startTime, formData.eventTimeZone);
+            endInstantIso = convertToUTCInstant(formData.endDate, formData.endTime, formData.eventTimeZone);
+        } catch {
+            toast.error('Please enter a valid start and end date/time');
+            return;
+        }
+        if (Date.parse(endInstantIso) <= Date.parse(startInstantIso)) {
+            toast.error('End date/time must be after the start date/time');
+            return;
+        }
+
         const calculatedMaxCapacity = ticketTypeRows.reduce((sum, row) => sum + row.totalQuantity, 0);
         const calculatedWaitlistCapacity = ticketTypeRows.reduce((sum, row) => sum + row.waitlistCapacity, 0);
         const calculatedTicketPrice = ticketTypeRows.length > 0 ? Math.min(...ticketTypeRows.map(r => r.price)) : 0;
@@ -272,13 +299,13 @@ export function EditEvent() {
             ticketPrice: calculatedTicketPrice,
             maxCapacity: calculatedMaxCapacity,
             waitlistCapacity: calculatedWaitlistCapacity,
-            eventStartInstant: `${formData.startDate}T${formData.startTime}:00Z`,
-            eventEndInstant: `${formData.endDate}T${formData.endTime}:00Z`,
-            eventStartDate: `${formData.startDate}T${formData.startTime}:00Z`,
-            eventEndDate: `${formData.endDate}T${formData.endTime}:00Z`,
+            eventStartInstant: startInstantIso,
+            eventEndInstant: endInstantIso,
+            eventStartDate: formData.startDate,
+            eventEndDate: formData.endDate,
+            eventTimeZone: formData.eventTimeZone,
             tags: typeof formData.tags === 'string' ? formData.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
         };
-        console.log('Submitting with form data:', updatedEvent);
         
 
         setSaving(true);
@@ -565,22 +592,25 @@ export function EditEvent() {
                                 </div>
 
                                 <div className="space-y-2 md:col-span-2">
-                                    <Label htmlFor="timezone">Timezone *</Label>
+                                    <Label htmlFor="eventTimeZone">Timezone *</Label>
                                     <Select
-                                        value={formData.timezone}
-                                        onValueChange={(value) => setFormData(prev => ({ ...prev, timezone: value }))}
+                                        value={formData.eventTimeZone}
+                                        onValueChange={(value) => setFormData(prev => ({ ...prev, eventTimeZone: value }))}
                                     >
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select Timezone" />
                                         </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="America/Los_Angeles">Pacific Time (PT) - Los Angeles</SelectItem>
-                                            <SelectItem value="America/Denver">Mountain Time (MT) - Denver</SelectItem>
-                                            <SelectItem value="America/Chicago">Central Time (CT) - Chicago</SelectItem>
-                                            <SelectItem value="America/New_York">Eastern Time (ET) - New York</SelectItem>
-                                            <SelectItem value="UTC">UTC</SelectItem>
+                                        <SelectContent className="max-h-72">
+                                            {SUPPORTED_TIMEZONES.map((tz) => (
+                                                <SelectItem key={tz} value={tz}>
+                                                    {describeTimeZone(tz)}
+                                                </SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
+                                    <p className="text-xs text-gray-500">
+                                        Times above are interpreted in this timezone and stored as UTC.
+                                    </p>
                                 </div>
                             </div>
 

@@ -21,15 +21,7 @@ import { toast } from 'sonner';
 import { runAPI } from '../api';
 import { useAuth } from '../context/AuthContext';
 import type { Event, UserBooking } from '../types';
-
-const createGoogleCalendarLink = (event: { eventName: string; eventDescription: string; eventStartInstant: string; eventEndInstant: string; eventLocation?: { locationAddress: string; locationName: string } }) => {
-    const title = encodeURIComponent(event.eventName || 'Event');
-    const details = encodeURIComponent(event.eventDescription || '');
-    const location = encodeURIComponent(event.eventLocation?.locationAddress || event.eventLocation?.locationName || '');
-    const start = new Date(String(event.eventStartInstant)).toISOString().replace(/-|:|\.\d\d\d/g, '');
-    const end = new Date(String(event.eventEndInstant)).toISOString().replace(/-|:|\.\d\d\d/g, '');
-    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${details}&location=${location}`;
-};
+import { formatInZone, generateGoogleCalendarUrl } from '../context/CalenderUtils';
 
 export function ViewBooking() {
     const navigate = useNavigate();
@@ -62,7 +54,7 @@ export function ViewBooking() {
 
                 setRecipientEmail(booking.userEmail || currentUser.email || '');
                 const formattedDate = booking.eventStartInstant
-                    ? format(new Date(String(booking.eventStartInstant).replace('Z', '')), 'MMM dd, yyyy h:mm a')
+                    ? formatInZone(booking.eventStartInstant, booking.eventTimeZone, 'MMM dd, yyyy h:mm a') || 'TBD'
                     : 'TBD';
                 setSubject(`Booking update for ${booking.eventName}`);
                 setMessage(`Hi ${booking.userName || currentUser.name},\n\nHere are the details for your booking: \nBooking Reference No: ${booking.bookingReference}\nEvent: ${booking.eventName}\nDate: ${formattedDate}\nTickets: ${booking.quantity}\nTotal: $${booking.totalAmount.toFixed(2)}\n\nIf you need help, visit the contact/help page.\n\nThanks,\nNode Events Team`);
@@ -128,20 +120,29 @@ export function ViewBooking() {
     }
 
     const eventDate = booking.eventStartInstant
-        ? format(new Date(String(booking.eventStartInstant).replace('Z', '')), 'MMM dd, yyyy')
+        ? formatInZone(booking.eventStartInstant, booking.eventTimeZone, 'MMM dd, yyyy') || 'TBD'
         : 'TBD';
     const eventTime = booking.eventStartInstant
-        ? format(new Date(String(booking.eventStartInstant).replace('Z', '')), 'h:mm a')
+        ? formatInZone(booking.eventStartInstant, booking.eventTimeZone, 'h:mm a') || 'TBD'
         : 'TBD';
 
     const calendarUrl = booking.eventStartInstant && booking.eventEndInstant
-        ? createGoogleCalendarLink({
-            eventName: booking.eventName,
-            eventDescription: booking.eventDescription,
-            eventStartInstant: booking.eventStartInstant,
-            eventEndInstant: booking.eventEndInstant,
-            eventLocation: booking.eventLocation,
-        })
+        ? (() => {
+            try {
+                return generateGoogleCalendarUrl({
+                    eventId: booking.eventId,
+                    eventName: booking.eventName,
+                    eventDescription: booking.eventDescription,
+                    eventStartInstant: booking.eventStartInstant,
+                    eventEndInstant: booking.eventEndInstant,
+                    eventTimeZone: booking.eventTimeZone,
+                    eventLocation: booking.eventLocation,
+                    eventOwnerName: booking.eventOwnerName,
+                } as unknown as Event);
+            } catch {
+                return '#';
+            }
+        })()
         : '#';
 
     return (
@@ -175,7 +176,7 @@ export function ViewBooking() {
                                         <div className="rounded-lg border p-4 bg-white">
                                             <p className="text-xs uppercase tracking-wide text-gray-500">Booking</p>
                                             <p className="mt-2 text-lg font-semibold">{booking.bookingReference}</p>
-                                            <p className="text-sm text-gray-600">{format(new Date(String(booking.createdAt).replace('Z', '')), 'MMM dd, yyyy h:mm a')}</p>
+                                            <p className="text-sm text-gray-600">{format(new Date(String(booking.createdAt)), 'MMM dd, yyyy h:mm a')}</p>
                                         </div>
                                         <div className="rounded-lg border p-4 bg-white">
                                             <p className="text-xs uppercase tracking-wide text-gray-500">Tickets</p>

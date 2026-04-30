@@ -2,21 +2,23 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent, CardFooter } from './ui/card';
 import { Badge } from './ui/badge';
 import { Calendar, MapPin, Users, Clock } from 'lucide-react';
-import { format } from 'date-fns';
 import type { Event } from '../types';
 import { resolveEventImageUrl } from '@/lib/eventImageStorage';
+import { formatInZone } from '../context/CalenderUtils';
 
 interface EventCardProps {
     event: Event;
 }
 
-function safeFormatDate(dateStr: string | undefined | null, fmt: string, fallback = 'TBD') {
+function safeFormatDate(
+    dateStr: string | undefined | null,
+    fmt: string,
+    tz?: string | null,
+    fallback = 'TBD',
+) {
     if (!dateStr) return fallback;
-    try {
-        return format(new Date(String(dateStr).replace('Z', '')), fmt);
-    } catch {
-        return fallback;
-    }
+    const out = formatInZone(dateStr, tz, fmt);
+    return out || fallback;
 }
 
 export function EventCard({ event }: EventCardProps) {
@@ -75,11 +77,11 @@ export function EventCard({ event }: EventCardProps) {
                     <div className="space-y-1.5 text-sm text-gray-600 mb-3">
                         <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4 shrink-0 text-blue-500" />
-                            <span>{safeFormatDate(event.eventStartInstant || event.eventStartDate, 'MMM dd, yyyy')}</span>
+                            <span>{safeFormatDate(event.eventStartInstant || event.eventStartDate, 'MMM dd, yyyy', event.eventTimeZone)}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <Clock className="h-4 w-4 shrink-0 text-blue-500" />
-                            <span>{safeFormatDate(event.eventStartInstant, 'h:mm a')}</span>
+                            <span>{safeFormatDate(event.eventStartInstant, 'h:mm a', event.eventTimeZone)}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <MapPin className="h-4 w-4 shrink-0 text-blue-500" />

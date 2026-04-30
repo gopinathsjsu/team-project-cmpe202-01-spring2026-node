@@ -30,7 +30,7 @@ import {
     UserX,
     RotateCcw
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatInZone } from '../context/CalenderUtils';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 import { runAPI } from '../api';
@@ -933,14 +933,8 @@ function EventManagementList({
                                     <h3 className="font-semibold mb-1">{event.eventName}</h3>
                                     <p className="text-sm text-gray-600">by {event.eventOwnerName}</p>
                                     <p className="text-sm text-gray-600">
-                                        {format(
-                                            new Date(String(event.eventStartInstant || event.eventStartDate || '').replace('Z', '')),
-                                            'MMM dd, yyyy'
-                                        )}{' '}
-                                        at{' '}
-                                        {event.eventStartInstant
-                                            ? format(new Date(String(event.eventStartInstant).replace('Z', '')), 'h:mm a')
-                                            : ''}
+                                        {formatInZone(event.eventStartInstant || event.eventStartDate, event.eventTimeZone, 'MMM dd, yyyy h:mm a')}
+                                        {event.eventTimeZone ? ` (${event.eventTimeZone})` : ''}
                                     </p>
                                 </div>
                                 <Badge
