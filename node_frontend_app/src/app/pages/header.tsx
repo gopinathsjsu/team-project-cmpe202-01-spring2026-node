@@ -51,7 +51,7 @@ export default function Header() {
                             </Link>
                         )}
 
-                        {isAuthenticated && (currentUser?.role === 'ORGANIZER' || currentUser?.role === 'ADMIN') && (
+                        {isAuthenticated && (currentUser?.role === 'ORGANIZER') && (
                             <Link to="/createEvent" className={navLinkClass('/createEvent')}>
                                 <span className="flex items-center gap-1.5"><Plus className="h-4 w-4" /> Create Event</span>
                             </Link>

@@ -30,6 +30,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDate;
 @Slf4j
 @Service
 public class EventManagementServiceImpl implements EventManagementService {
@@ -346,6 +347,13 @@ public class EventManagementServiceImpl implements EventManagementService {
         }
 
         return convertToDto(saved);
+    }
+
+    @Override
+    public void markEventsCompletedBefore(LocalDate today) {
+        log.debug("Marking events completed before {}", today);
+        int updated = eventRepository.markEventsCompletedBefore(today, EventStatus.PUBLISHED, EventStatus.COMPLETED);
+        log.info("Marked {} events completed with date before {}", updated, today);
     }
 
     private void publishNewEventPublished(Events event) {
