@@ -2,9 +2,9 @@ import { Search, MapPin, Calendar, Clock, ChevronRight, Music, Laptop, Graduatio
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { runAPI } from '../api';
-import { format } from 'date-fns';
 import type { EventCategory } from '../types';
 import { resolveEventImageUrl } from '@/lib/eventImageStorage';
+import { formatInZone } from '../context/CalenderUtils';
 
 export default function Home() {
     const navigate = useNavigate();
@@ -222,13 +222,13 @@ export default function Home() {
                                             <div className="flex items-center gap-2">
                                                 <Calendar size={16} className="text-blue-500 shrink-0" />
                                                 <span>
-                                                    {(() => { try { return format(new Date(String(event.eventStartInstant || event.eventStartDate || '').replace('Z', '')), 'MMM dd, yyyy'); } catch { return 'TBD'; } })()}
+                                                    {formatInZone(event.eventStartInstant || event.eventStartDate, event.eventTimeZone, 'MMM dd, yyyy') || 'TBD'}
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <Clock size={16} className="text-blue-500 shrink-0" />
                                                 <span>
-                                                    {(() => { try { return event.eventStartInstant ? format(new Date(String(event.eventStartInstant).replace('Z', '')), 'h:mm a') : 'TBD'; } catch { return 'TBD'; } })()}
+                                                    {formatInZone(event.eventStartInstant, event.eventTimeZone, 'h:mm a') || 'TBD'}
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-2">

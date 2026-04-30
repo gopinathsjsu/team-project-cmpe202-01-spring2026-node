@@ -3,8 +3,8 @@ import { useParams, useNavigate } from 'react-router';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Calendar, MapPin, Users, Tag, ArrowLeft, Share2, Heart } from 'lucide-react';
-import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { formatInZone } from '../context/CalenderUtils';
 import { useAuth } from '../context/AuthContext';
 import { runAPI } from '../api';
 import { EventMap } from '../components/EventMap';
@@ -60,8 +60,11 @@ export function EventDetail() {
         );
     }
 
-    // Backend may not return ticketsSold; derive from bookings (ticket list) when missing
-    const startDate = new Date(String(event.eventStartInstant || event.eventStartDate || event.startDate || '').replace('Z', ''));
+    // Backend may not return ticketsSold; derive from bookings (ticket list) when missing.
+    // Note: eventStartInstant is an absolute UTC ISO string — parse it as-is so the
+    // comparison against `new Date()` is done in real wall-clock terms.
+    const startDate = new Date(String(event.eventStartInstant || event.eventStartDate || event.startDate || ''));
+    const eventTz = event.eventTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     const ticketsSold = typeof event.ticketsSold === 'number'
         ? event.ticketsSold
         : bookings.reduce((sum, b) => sum + (b.ticketQuantity ?? 0), 0);
@@ -138,13 +141,18 @@ export function EventDetail() {
                                         <div>
                                             <div className="font-medium">Date & Time</div>
                                             <div className="text-muted-foreground">
-                                                {format(new Date(String(event.eventStartInstant || event.eventStartDate || event.startDate || '').replace('Z', '')), 'MMMM dd, yyyy ')}
-                                                {event.eventStartInstant ? format(new Date(String(event.eventStartInstant).replace('Z', '')), 'h:mm a') : ''}
+                                                {formatInZone(event.eventStartInstant || event.eventStartDate || event.startDate, eventTz, 'MMMM dd, yyyy h:mm a')}
                                             </div>
                                             <div className="text-muted-foreground">
-                                                {event.eventEndInstant ? format(new Date(String(event.eventEndInstant).replace('Z', '')), 'MMMM dd, yyyy ') : ''}
-                                                {event.eventEndInstant ? format(new Date(String(event.eventEndInstant).replace('Z', '')), 'h:mm a') : ''}
+                                                {event.eventEndInstant
+                                                    ? formatInZone(event.eventEndInstant, eventTz, 'MMMM dd, yyyy h:mm a')
+                                                    : ''}
                                             </div>
+                                            {event.eventTimeZone ? (
+                                                <div className="text-xs text-muted-foreground/80 mt-1">
+                                                    Timezone: {event.eventTimeZone}
+                                                </div>
+                                            ) : null}
                                         </div>
                                     </div>
 

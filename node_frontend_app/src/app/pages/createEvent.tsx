@@ -14,7 +14,11 @@ import { runAPI, newTicketTypeRow } from '../api';
 import type { Event, EventCategory, TicketTypeDraft } from '../types';
 import { TicketTypesEditor } from '../components/TicketTypesEditor';
 import { storeEventCoverDataUrl, resolveEventImageUrl } from '@/lib/eventImageStorage';
-//import { convertToUTCInstant } from '../context/CalenderUtils';
+import {
+  convertToUTCInstant,
+  SUPPORTED_TIMEZONES,
+  describeTimeZone,
+} from '../context/CalenderUtils';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -206,15 +210,20 @@ export function CreateEvent() {
       return;
     }
 
-    // Validate the date/time window before submitting. The backend will also
-    // reject invalid windows, but failing fast on the client gives a clearer
-    // message and avoids a wasted round trip + half-saved ticket types.
-    const startMs = Date.parse(`${formData.startDate}T${formData.startTime}:00Z`);
-    const endMs = Date.parse(`${formData.endDate}T${formData.endTime}:00Z`);
-    if (Number.isNaN(startMs) || Number.isNaN(endMs)) {
+    // Convert (date + time) entered in the selected timezone into absolute UTC
+    // instants. Validating against these instants gives consistent answers
+    // regardless of the viewer's browser timezone.
+    let startInstantIso: string;
+    let endInstantIso: string;
+    try {
+      startInstantIso = convertToUTCInstant(formData.startDate, formData.startTime, formData.eventTimeZone);
+      endInstantIso = convertToUTCInstant(formData.endDate, formData.endTime, formData.eventTimeZone);
+    } catch {
       toast.error('Please enter a valid start and end date/time');
       return;
     }
+    const startMs = Date.parse(startInstantIso);
+    const endMs = Date.parse(endInstantIso);
     if (endMs <= startMs) {
       toast.error('End date/time must be after the start date/time');
       return;
@@ -250,10 +259,10 @@ export function CreateEvent() {
       },
       ticketPrice: calculatedTicketPrice,
       imageUrl: formData.image,
-      eventStartDate:  `${formData.startDate}T${formData.startTime}:-08:00`,
-      eventEndDate: `${formData.endDate}T${formData.endTime}:-08:00`,
-      eventStartInstant: `${formData.startDate}T${formData.startTime}:-08:00`,
-      eventEndInstant: `${formData.endDate}T${formData.endTime}:-08:00`,
+      eventStartDate: formData.startDate,
+      eventEndDate: formData.endDate,
+      eventStartInstant: startInstantIso,
+      eventEndInstant: endInstantIso,
       eventTimeZone: formData.eventTimeZone,
       eventPublishDate: new Date().toISOString(),
       eventOwnerId: currentUser?.id,
@@ -535,7 +544,7 @@ export function CreateEvent() {
                     </div>
                   </div>
 
-                  {/* <div className="space-y-2 md:col-span-2">
+                  <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="eventTimeZone">Timezone *</Label>
                     <Select
                       value={formData.eventTimeZone}
@@ -544,15 +553,18 @@ export function CreateEvent() {
                       <SelectTrigger>
                         <SelectValue placeholder="Select Timezone" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="America/Los_Angeles">Pacific Time (PT) - Los Angeles</SelectItem>
-                        <SelectItem value="America/Denver">Mountain Time (MT) - Denver</SelectItem>
-                        <SelectItem value="America/Chicago">Central Time (CT) - Chicago</SelectItem>
-                        <SelectItem value="America/New_York">Eastern Time (ET) - New York</SelectItem>
-                        <SelectItem value="UTC">UTC</SelectItem>
+                      <SelectContent className="max-h-72">
+                        {SUPPORTED_TIMEZONES.map((tz) => (
+                          <SelectItem key={tz} value={tz}>
+                            {describeTimeZone(tz)}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
-                  </div> */}
+                    <p className="text-xs text-gray-500">
+                      Times you enter above are interpreted in this timezone and stored as UTC.
+                    </p>
+                  </div>
                 </div>
 
                 {/* Map Picker */}
