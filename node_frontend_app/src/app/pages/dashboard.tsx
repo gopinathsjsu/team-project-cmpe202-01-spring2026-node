@@ -26,6 +26,7 @@ import { runAPI } from '../api';
 import { useAuth } from '../context/AuthContext';
 import type { Event, OrganizerEventSummary, UserBooking } from '../types';
 import { resolveEventImageUrl } from '@/lib/eventImageStorage';
+//import { convertUTCToLocal } from '../context/CalenderUtils';
 
 const createGoogleCalendarLink = (event: any) => {
     const title = encodeURIComponent(event.eventName || event.title || 'Event');
@@ -131,6 +132,14 @@ export function Dashboard() {
             .then((res) => {
                 if (cancelled) return;
                 setEvents(Array.isArray(res.content) ? res.content : []);
+                //handle UTC to local conversion for event start/end times here if needed before setting state
+                setEvents(res.content.map((event) => {
+                    return {
+                        ...event,
+                        //eventStartInstant: convertUTCToLocal(event.eventStartInstant, event.eventTimeZone),
+                        //eventEndInstant: convertUTCToLocal(event.eventEndInstant, event.eventTimeZone),
+                    };
+                }));
                 setOrgTotal(res.totalElements);
                 setOrgTotalPages(res.totalPages);
             })
@@ -395,10 +404,10 @@ export function Dashboard() {
                             <Button variant="outline" onClick={() => navigate('/admin')}>Admin Panel</Button>
                             <Button variant="outline" onClick={() => navigate('/profile')}>My Profile</Button>
                             <Button variant="outline" onClick={() => navigate('/events')}>Browse Events</Button>
-                            <Button onClick={() => navigate('/create-event')}>
+                            {/* <Button onClick={() => navigate('/create-event')}>
                                 <Plus className="h-4 w-4 mr-2" />
                                 Create Event
-                            </Button>
+                            </Button> */}
                         </CardContent>
                     </Card>
                 </div>
