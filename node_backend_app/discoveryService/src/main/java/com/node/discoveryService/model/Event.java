@@ -17,8 +17,16 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import java.util.UUID;
+import lombok.Data;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
 @Entity
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Table(name = "events")
 public class Event {
     
@@ -54,6 +62,10 @@ public class Event {
 
 
     //Getters
+    public String getEventId() {
+        return eventId;
+    }
+
     public String getEventName()
     {
         return eventName;
@@ -129,6 +141,10 @@ public class Event {
 
 
     //Setters
+    public void setEventId(String eventId) {
+        this.eventId = eventId;
+    }
+
     public void setEventName(String eventName)
     {
         this.eventName = eventName;
