@@ -25,10 +25,6 @@ import {
     AlertTriangle,
     ChevronLeft,
     ChevronRight,
-    UserPlus,
-    UserMinus,
-    UserX,
-    RotateCcw
 } from 'lucide-react';
 import { formatInZone } from '../context/CalenderUtils';
 import { toast } from 'sonner';
@@ -36,12 +32,6 @@ import { useAuth } from '../context/AuthContext';
 import { runAPI } from '../api';
 import { resolveEventImageUrl } from '@/lib/eventImageStorage';
 import type { AdminUserRow, BookingAdminMetrics, Event, EventAdminMetrics } from '../types';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '../components/ui/dropdown-menu';
 
 const PAGE_SIZE = 10;
 
@@ -86,6 +76,21 @@ function PaginationBar(props: {
             </div>
         </div>
     );
+}
+
+function displayNameFromIdentityUser(u: {
+    email: string;
+    username?: string;
+    firstName?: string;
+    lastName?: string;
+}): string {
+    const fn = u.firstName?.trim() ?? '';
+    const ln = u.lastName?.trim() ?? '';
+    const full = `${fn} ${ln}`.trim();
+    if (full) return full;
+    const un = u.username?.trim();
+    if (un) return un;
+    return u.email || 'Unknown';
 }
 
 function tabToEventStatus(tab: string): string | null {
@@ -170,10 +175,44 @@ export function AdminPanel() {
                 status,
                 q: debouncedEventSearch,
             })
-            .then((res) => {
-                setEvents(res.content);
+            .then(async (res) => {
+                const rows = Array.isArray(res.content) ? res.content : [];
                 setEventsTotal(res.totalElements);
                 setEventsTotalPages(res.totalPages);
+
+                const ownerIdsMissingName = [...new Set(
+                    rows
+                        .filter((e) => {
+                            const n = String(e.eventOwnerName ?? '').trim();
+                            return !n || n === 'Unknown';
+                        })
+                        .map((e) => String(e.eventOwnerId ?? ''))
+                        .filter(Boolean),
+                )];
+
+                const nameById: Record<string, string> = {};
+                await Promise.all(
+                    ownerIdsMissingName.map(async (oid) => {
+                        try {
+                            const u = await api.getIdentityUserById(oid);
+                            if (u?.id) nameById[oid] = displayNameFromIdentityUser(u);
+                        } catch {
+                            /* event DB has no organizer row; identity lookup is best-effort */
+                        }
+                    }),
+                );
+
+                const enriched = rows.map((ev) => {
+                    const oid = String(ev.eventOwnerId ?? '');
+                    const resolved = oid ? nameById[oid] : undefined;
+                    const current = String(ev.eventOwnerName ?? '').trim();
+                    if (resolved && (!current || current === 'Unknown')) {
+                        return { ...ev, eventOwnerName: resolved };
+                    }
+                    return ev;
+                });
+
+                setEvents(enriched);
             })
             .catch((e) => {
                 console.error(e);
@@ -454,6 +493,15 @@ export function AdminPanel() {
                 toast.error(message);
             });
     };
+
+    void [
+        handleCreateAdmin,
+        handleRemoveAdmin,
+        handleDeactivateUser,
+        handleDeleteUser,
+        handleReactivateUser,
+    ];
+
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="container mx-auto px-4 py-8">
@@ -899,6 +947,8 @@ function EventManagementList({
     onToSubmit: (id: string) => void;
     navigate: (path: string) => void;
 }) {
+    void onSuspend;
+
     if (loading) {
         return (
             <div className="text-center py-12 text-gray-600">

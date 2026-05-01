@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router';
 import { runAPI } from '../api';
 import type { Profile as ProfileType } from '../types';
+import { geolocationFailureMessage, geolocationUnavailableReason } from '@/app/lib/geolocationHints';
 
 function getApiErrorMessage(err: unknown, fallback: string): string {
     if (
@@ -259,8 +260,9 @@ export function Profile() {
     };
 
     const handleUseCurrentLocation = () => {
-        if (!navigator.geolocation) {
-            toast.error('Geolocation is not supported by your browser');
+        const blocked = geolocationUnavailableReason();
+        if (blocked) {
+            toast.error(blocked, { id: 'profile-location-toast' });
             return;
         }
 
@@ -285,8 +287,8 @@ export function Profile() {
                     toast.success('Coordinates added as location', { id: 'profile-location-toast' });
                 }
             },
-            () => {
-                toast.error('Unable to retrieve your location', { id: 'profile-location-toast' });
+            (error) => {
+                toast.error(geolocationFailureMessage(error), { id: 'profile-location-toast' });
             }
         );
     };

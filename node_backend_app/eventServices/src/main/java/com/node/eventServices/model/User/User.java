@@ -64,13 +64,15 @@ public class User {
 
     /** Profile display name (the {@code username} column), not the security principal. */
     public String getProfileUsername() {
-        if (!firstName.isEmpty()) {
-            if(!lastName.isEmpty()) {
+        boolean hasFirst = firstName != null && !firstName.isEmpty();
+        boolean hasLast = lastName != null && !lastName.isEmpty();
+        if (hasFirst) {
+            if (hasLast) {
                 return firstName + " " + lastName;
             }
             return firstName;
         }
-        return userEmail;
+        return userEmail != null ? userEmail : "";
     }
 
     public boolean isEnabled() {

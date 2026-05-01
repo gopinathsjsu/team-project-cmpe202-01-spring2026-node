@@ -2,6 +2,7 @@ package com.node.bookingService.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -88,7 +89,19 @@ public class EventServiceClient {
         }
     }
 
+    /** HTTP status-only check — avoids decoding a full EventInfoDto JSON on every ticket-type save. */
     public boolean eventExists(String eventId) {
-        return getEventById(eventId) != null;
+        try {
+            Boolean exists = webClient.get()
+                    .uri("/api/v1/events/{id}", eventId)
+                    .exchangeToMono(response -> response.releaseBody()
+                            .then(Mono.just(response.statusCode().equals(HttpStatus.OK))))
+                    .timeout(Duration.ofSeconds(timeoutSeconds))
+                    .block();
+            return Boolean.TRUE.equals(exists);
+        } catch (Exception e) {
+            log.warn("eventExists check failed for id={}: {}", eventId, e.getMessage());
+            return false;
+        }
     }
 }

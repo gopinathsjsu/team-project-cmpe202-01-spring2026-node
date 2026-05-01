@@ -7,13 +7,14 @@ import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { ArrowLeft, Plus, X, MapPin, Upload, Link2 } from 'lucide-react';
+import { ArrowLeft, X, MapPin, Upload, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '../components/ui/badge';
 import { runAPI, newTicketTypeRow } from '../api';
 import type { Event, EventCategory, TicketTypeDraft } from '../types';
 import { TicketTypesEditor } from '../components/TicketTypesEditor';
 import { storeEventCoverDataUrl, resolveEventImageUrl } from '@/lib/eventImageStorage';
+import { geolocationFailureMessage, geolocationUnavailableReason } from '@/app/lib/geolocationHints';
 import {
   convertToUTCInstant,
   SUPPORTED_TIMEZONES,
@@ -81,7 +82,6 @@ export function CreateEvent() {
     tags: [] as string[],
   });
 
-  const [tagInput, setTagInput] = useState('');
   const [selectKey, setSelectKey] = useState(0);
   const [ticketTypeRows, setTicketTypeRows] = useState<TicketTypeDraft[]>(() => [
     newTicketTypeRow({
@@ -167,8 +167,9 @@ export function CreateEvent() {
   };
 
   const getCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser');
+    const blocked = geolocationUnavailableReason();
+    if (blocked) {
+      toast.error(blocked, { id: 'location-toast' });
       return;
     }
 
@@ -182,7 +183,7 @@ export function CreateEvent() {
       },
       (error) => {
         console.error("Error getting location:", error);
-        toast.error('Unable to retrieve your location', { id: 'location-toast' });
+        toast.error(geolocationFailureMessage(error), { id: 'location-toast' });
       }
     );
   };
@@ -274,11 +275,18 @@ export function CreateEvent() {
       tags: formData.tags
     };
 
+    const saveToastId = 'create-event-save';
     setSubmitting(true);
+    toast.loading('Saving event…', {
+      id: saveToastId,
+      description: 'This can take ~10–30s on a small server (two services running).',
+      duration: 120_000,
+    });
     try {
       const created = await api.addEvent(newEvent);
       const eventId = String(created?.eventId ?? '');
       if (!eventId || eventId === 'null') {
+        toast.dismiss(saveToastId);
         toast.error('Event created but no ID returned; ticket types were not saved.');
         navigate('/dashboard');
         return;
@@ -292,6 +300,12 @@ export function CreateEvent() {
         waitlistCapacity: r.waitlistCapacity ?? 0,
       }));
 
+      toast.loading('Saving ticket types…', {
+        id: saveToastId,
+        description: 'Talking to booking service.',
+        duration: 120_000,
+      });
+
       try {
         await api.assignTicketTypesToEvent(eventId, items);
       } catch (ticketErr: unknown) {
@@ -304,33 +318,18 @@ export function CreateEvent() {
         );
       }
 
+      toast.dismiss(saveToastId);
       toast.success(`Event ${status === 'DRAFT' ? 'saved as draft' : 'submitted'} successfully!`);
       navigate('/dashboard');
     } catch (err: unknown) {
       console.error(err);
+      toast.dismiss(saveToastId);
       const msg = (err as { response?: { data?: { message?: string } } })
           ?.response?.data?.message;
       toast.error(msg ?? 'Failed to create event');
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const addTag = () => {
-    if (tagInput && !formData.tags.includes(tagInput)) {
-      setFormData(prev => ({
-        ...prev,
-        tags: [...prev.tags, tagInput]
-      }));
-      setTagInput('');
-    }
-  };
-
-  const removeTag = (tag: string) => {
-    setFormData(prev => ({
-      ...prev,
-      tags: prev.tags.filter(t => t !== tag)
-    }));
   };
 
   const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2 MB — base64 in JSON can be large; use URL for bigger files
@@ -475,7 +474,11 @@ export function CreateEvent() {
                       </SelectContent>
                     </Select>
                     {!categoriesLoading && categories.length === 0 && (
-                      <p className="text-xs text-red-600">No categories available. Start Event Service and refresh this page.</p>
+                      <p className="text-xs text-red-600">
+                        No categories in the database yet. Event Service is up, but nothing is seeded—add categories (e.g.
+                        POST <code className="rounded bg-muted px-1">/api/v1/events/categories</code>) or seed the DB, then
+                        refresh.
+                      </p>
                     )}
                     {formData.categories.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-2">

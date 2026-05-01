@@ -17,6 +17,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.Map;
 import java.util.UUID;
@@ -60,9 +61,11 @@ public class AdminService {
     }
 
     @Transactional(readOnly = true)
-    public PagedUsersResponse getAllUsers(int page, int size) {
+    public PagedUsersResponse getAllUsers(int page, int size, String roleFilter, String emailQuery) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<User> usersPage = userRepository.findAll(pageable);
+        Role resolvedRole = parseRoleFilter(roleFilter);
+        String emailLike = buildEmailContainsPattern(emailQuery);
+        Page<User> usersPage = userRepository.findFiltered(resolvedRole, emailLike, pageable);
 
         return PagedUsersResponse.builder()
                 .users(usersPage.getContent().stream().map(this::toUserResponse).toList())
@@ -72,6 +75,31 @@ public class AdminService {
                 .totalPages(usersPage.getTotalPages())
                 .hasNext(usersPage.hasNext())
                 .build();
+    }
+
+    private static Role parseRoleFilter(String raw) {
+        if (!StringUtils.hasText(raw)) {
+            return null;
+        }
+        try {
+            return Role.valueOf(raw.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+    /**
+     * @return {@code "%fragment%"} lowercased for {@code LIKE}, or {@code null} to skip filtering
+     */
+    private static String buildEmailContainsPattern(String raw) {
+        if (!StringUtils.hasText(raw)) {
+            return null;
+        }
+        String frag = raw.trim().toLowerCase().replace("\\", "").replace("%", "").replace("_", "");
+        if (!StringUtils.hasText(frag)) {
+            return null;
+        }
+        return "%" + frag + "%";
     }
 
     @Transactional

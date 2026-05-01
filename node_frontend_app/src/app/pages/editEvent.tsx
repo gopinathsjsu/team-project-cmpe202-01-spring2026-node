@@ -11,6 +11,7 @@ import { runAPI, newTicketTypeRow, ticketTypeApiToDraft } from '../api';
 import type { EventCategory, TicketTypeDraft } from '../types';
 import { TicketTypesEditor } from '../components/TicketTypesEditor';
 import { storeEventCoverDataUrl, resolveEventImageUrl } from '@/lib/eventImageStorage';
+import { geolocationFailureMessage, geolocationUnavailableReason } from '@/app/lib/geolocationHints';
 import {
     convertToUTCInstant,
     extractZonedDateTime,
@@ -409,8 +410,9 @@ export function EditEvent() {
     };
 
     const getCurrentLocation = () => {
-        if (!navigator.geolocation) {
-            toast.error('Geolocation is not supported by your browser');
+        const blocked = geolocationUnavailableReason();
+        if (blocked) {
+            toast.error(blocked, { id: 'location-toast' });
             return;
         }
 
@@ -424,7 +426,7 @@ export function EditEvent() {
             },
             (error) => {
                 console.error("Error getting location:", error);
-                toast.error('Unable to retrieve your location. Please check browser permissions.', { id: 'location-toast' });
+                toast.error(geolocationFailureMessage(error), { id: 'location-toast' });
             }
         );
     };

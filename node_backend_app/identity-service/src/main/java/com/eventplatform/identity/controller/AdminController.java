@@ -47,10 +47,12 @@ public class AdminController {
     @Operation(summary = "Get all users (paginated)")
     public ResponseEntity<PagedUsersResponse> getAllUsers(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) String q) {
         int normalizedPage = Math.max(page, 0);
         int normalizedSize = Math.min(Math.max(size, 1), 100);
-        PagedUsersResponse response = adminService.getAllUsers(normalizedPage, normalizedSize);
+        PagedUsersResponse response = adminService.getAllUsers(normalizedPage, normalizedSize, role, q);
         return ResponseEntity.ok(response);
     }
 

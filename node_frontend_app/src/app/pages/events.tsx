@@ -140,22 +140,6 @@ export function AllEvents() {
     return () => { cancelled = true; };
   }, [eventsPage, debouncedSearch, debouncedLocation, eventStartDate, priceType, category, geoCenter, radiusKm, sortParam]);
 
-  const geocodeAddress = async (q: string): Promise<{ lat: number; lng: number } | null> => {
-    const query = q.trim();
-    if (!query) return null;
-    try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
-      const data = await response.json();
-      if (!Array.isArray(data) || data.length === 0) return null;
-      const lat = Number(data[0].lat);
-      const lng = Number(data[0].lon);
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-      return { lat, lng };
-    } catch {
-      return null;
-    }
-  };
-
   const handleNearMe = () => {
     if (!navigator.geolocation) {
       toast.error('Geolocation is not supported by your browser');
@@ -171,24 +155,6 @@ export function AllEvents() {
       () => toast.error('Unable to get your location', { id: 'near-me' }),
       { enableHighAccuracy: true, timeout: 10000 },
     );
-  };
-
-  const handleNearTypedLocation = async () => {
-    if (!locationText.trim()) {
-      toast.error('Type an address or city first');
-      return;
-    }
-    toast.loading('Locating address...', { id: 'near-location' });
-    const point = await geocodeAddress(locationText);
-    if (!point) {
-      setGeoCenter(null);
-      setGeoLabel('');
-      toast.info('Using text location search only (could not geocode exact point)', { id: 'near-location' });
-      return;
-    }
-    setGeoCenter(point);
-    setGeoLabel(`Near "${locationText.trim()}"`);
-    toast.success(`Searching near ${locationText.trim()} (${radiusKm} mile radius)`, { id: 'near-location' });
   };
 
   const handleClearFilters = () => {
