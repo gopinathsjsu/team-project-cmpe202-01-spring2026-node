@@ -371,6 +371,40 @@ export function runAPI() {
       const response = await axios.get(`${API_BASE_URL}/events/activeEvents/paged?${sp.toString()}`);
       return response.data;
     },
+    discoverEvents: async (params: {
+      page?: number;
+      size?: number;
+      q?: string;
+      location?: string;
+      lat?: number;
+      lng?: number;
+      radiusKm?: number;
+      dateFrom?: string;
+      priceType?: 'all' | 'free' | 'paid';
+      category?: string;
+      sortBy?: string;
+      sortDir?: 'asc' | 'desc';
+      futureOnly?: boolean;
+    }): Promise<PageResponse<Event>> => {
+      const sp = new URLSearchParams();
+      sp.set('page', String(params.page ?? 0));
+      sp.set('size', String(params.size ?? 12));
+      sp.set('sortBy', params.sortBy ?? 'eventStartInstant');
+      sp.set('sortDir', params.sortDir ?? 'asc');
+      sp.set('futureOnly', String(params.futureOnly ?? true));
+      if (params.q?.trim()) sp.set('q', params.q.trim());
+      if (params.location?.trim()) sp.set('location', params.location.trim());
+      if (typeof params.lat === 'number' && Number.isFinite(params.lat)) sp.set('lat', String(params.lat));
+      if (typeof params.lng === 'number' && Number.isFinite(params.lng)) sp.set('lng', String(params.lng));
+      if (typeof params.radiusKm === 'number' && Number.isFinite(params.radiusKm) && params.radiusKm > 0) {
+        sp.set('radiusKm', String(params.radiusKm));
+      }
+      if (params.dateFrom) sp.set('dateFrom', params.dateFrom);
+      if (params.priceType && params.priceType !== 'all') sp.set('priceType', params.priceType);
+      if (params.category?.trim()) sp.set('category', params.category.trim());
+      const response = await axios.get(`${API_BASE_URL}/discover/events?${sp.toString()}`);
+      return response.data;
+    },
     getEventById: async (id: string): Promise<Event> => {
       const response = await axios.get(`${API_BASE_URL}/events/${id}`);
       return response.data;
