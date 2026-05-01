@@ -47,7 +47,7 @@ public final class EventSpecification {
             // fall back to a textual LIKE on name + address otherwise.
             if (f.hasGeoFilter()) {
                 var locJoin = root.join("eventLocation", JoinType.INNER);
-                double radiusMeters = f.getRadiusKm() * 1000.0;
+                double radiusMeters = f.getRadiusKm() * 1500.0;
 
                 // ST_SetSRID(ST_MakePoint(lng, lat), 4326) — note PostGIS uses (x=lng, y=lat).
                 Expression<?> userPoint = cb.function(
