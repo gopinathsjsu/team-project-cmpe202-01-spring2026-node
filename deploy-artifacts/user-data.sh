@@ -54,7 +54,8 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
     }
 
-    location /api/v1/admin/ {
+    # Match /admin, /admin/, and /admin/users — prefix-only `/admin/` can miss odd paths on some setups.
+    location ^~ /api/v1/admin {
         proxy_pass http://127.0.0.1:8081;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

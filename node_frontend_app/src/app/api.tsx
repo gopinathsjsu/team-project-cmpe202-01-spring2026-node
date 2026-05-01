@@ -179,6 +179,76 @@ function buildDisplayName(user: {
   return user.email ?? '';
 }
 
+async function fetchAuthAllUsersBulkProfiles(): Promise<
+  Record<
+    string,
+    {
+      email: string;
+      username?: string;
+      firstName?: string;
+      lastName?: string;
+    }
+  >
+> {
+  const response = await axios.get(`${API_BASE_URL}/auth/allUsers`);
+  if (!Array.isArray(response.data)) return {};
+  const out: Record<string, { email: string; username?: string; firstName?: string; lastName?: string }> =
+    {};
+  for (const raw of response.data as Record<string, unknown>[]) {
+    const id = raw.id != null ? String(raw.id) : '';
+    if (!id) continue;
+    out[id] = {
+      email: String(raw.email ?? ''),
+      username: typeof raw.username === 'string' ? raw.username : undefined,
+      firstName: typeof raw.firstName === 'string' ? raw.firstName : undefined,
+      lastName: typeof raw.lastName === 'string' ? raw.lastName : undefined,
+    };
+  }
+  return out;
+}
+
+function paginateAdminUsersLocally(
+  all: AdminUserRow[],
+  page: number,
+  size: number,
+  role?: string,
+  q?: string,
+): PageResponse<AdminUserRow> {
+  let rows = all.filter((r) => r.id);
+  if (role) {
+    const want = role.toUpperCase();
+    rows = rows.filter((r) => String(r.role).toUpperCase() === want);
+  }
+  const qt = q?.trim().toLowerCase();
+  if (qt) rows = rows.filter((r) => r.email.toLowerCase().includes(qt));
+
+  const totalElements = rows.length;
+  if (totalElements === 0) {
+    return {
+      content: [],
+      totalElements: 0,
+      totalPages: 0,
+      number: 0,
+      size,
+      first: true,
+      last: true,
+    };
+  }
+  const totalPages = Math.ceil(totalElements / size);
+  const safePage = Math.min(Math.max(page, 0), totalPages - 1);
+  const start = safePage * size;
+  const content = rows.slice(start, start + size);
+  return {
+    content,
+    totalElements,
+    totalPages,
+    number: safePage,
+    size,
+    first: safePage <= 0,
+    last: safePage >= totalPages - 1,
+  };
+}
+
 // Add interceptor to include token
 axios.interceptors.request.use((config) => {
   const requestUrl = config.url ?? '';
@@ -645,44 +715,79 @@ export function runAPI() {
       role?: string;
       q?: string;
     }): Promise<PageResponse<AdminUserRow>> => {
+      const page = params.page ?? 0;
+      const size = params.size ?? 10;
       const sp = new URLSearchParams();
-      sp.set('page', String(params.page ?? 0));
-      sp.set('size', String(params.size ?? 10));
+      sp.set('page', String(page));
+      sp.set('size', String(size));
       if (params.role) sp.set('role', params.role);
       if (params.q?.trim()) sp.set('q', params.q.trim());
-      const response = await axios.get(`${API_BASE_URL}/admin/users?${sp.toString()}`);
-      const data = response.data as Record<string, unknown>;
-      // Identity returns PagedUsersResponse { users, page, size, totalElements, totalPages }; Spring Page uses content.
-      const rawRows = Array.isArray(data.users)
-        ? data.users
-        : Array.isArray(data.content)
-          ? data.content
-          : [];
-      const pageNum =
-        typeof data.page === 'number' ? data.page : Number((data.number as number | undefined) ?? 0);
-      const sizeNum =
-        typeof data.size === 'number' ? data.size : Number(params.size ?? 10);
-      const totalElements =
-        typeof data.totalElements === 'number' ? data.totalElements : Number(data.totalElements ?? 0);
-      const totalPages =
-        typeof data.totalPages === 'number' ? data.totalPages : Number(data.totalPages ?? 0);
-      const content: AdminUserRow[] = rawRows.map(
-        (row: { id?: string; email?: string; role?: AdminUserRow['role'] }) => ({
-          id: row.id != null ? String(row.id) : '',
-          email: row.email ?? '',
-          role: mapBackendRole(row.role) as AdminUserRow['role'],
-        }),
-      );
-      return {
-        content,
-        totalElements,
-        totalPages,
-        number: pageNum,
-        size: sizeNum,
-        first: pageNum <= 0,
-        last: totalPages <= 0 ? true : pageNum >= totalPages - 1,
-      };
+
+      try {
+        const response = await axios.get(`${API_BASE_URL}/admin/users?${sp.toString()}`);
+        const data = response.data;
+        const shaped =
+          typeof data === 'object' &&
+          data !== null &&
+          !Array.isArray(data) &&
+          (Array.isArray((data as Record<string, unknown>).users) ||
+            Array.isArray((data as Record<string, unknown>).content));
+
+        if (shaped) {
+          const obj = data as Record<string, unknown>;
+          const rawRows = Array.isArray(obj.users)
+            ? obj.users
+            : Array.isArray(obj.content)
+              ? obj.content
+              : [];
+          const pageNum =
+            typeof obj.page === 'number' ? obj.page : Number((obj.number as number | undefined) ?? 0);
+          const sizeNum = typeof obj.size === 'number' ? obj.size : size;
+          const totalElements =
+            typeof obj.totalElements === 'number' ? obj.totalElements : Number(obj.totalElements ?? 0);
+          const totalPages =
+            typeof obj.totalPages === 'number' ? obj.totalPages : Number(obj.totalPages ?? 0);
+          const content: AdminUserRow[] = (rawRows as { id?: string; email?: string; role?: unknown }[]).map(
+            (row) => ({
+              id: row.id != null ? String(row.id) : '',
+              email: row.email ?? '',
+              role: mapBackendRole(row.role) as AdminUserRow['role'],
+            }),
+          );
+
+          return {
+            content,
+            totalElements,
+            totalPages,
+            number: pageNum,
+            size: sizeNum,
+            first: pageNum <= 0,
+            last: totalPages <= 0 ? true : pageNum >= totalPages - 1,
+          };
+        }
+      } catch {
+        /* fall through — production nginx occasionally serves HTML or returns 502 for /admin/users */
+      }
+
+      try {
+        const bulk = await axios.get(`${API_BASE_URL}/auth/allUsers`);
+        const list = Array.isArray(bulk.data) ? bulk.data : [];
+        const rows: AdminUserRow[] = (list as Record<string, unknown>[]).map((raw) => ({
+          id: raw.id != null ? String(raw.id) : '',
+          email: String(raw.email ?? ''),
+          role: mapBackendRole(raw.role) as AdminUserRow['role'],
+        }));
+        return paginateAdminUsersLocally(rows, page, size, params.role, params.q);
+      } catch {
+        return paginateAdminUsersLocally([], page, size, params.role, params.q);
+      }
     },
+
+    /**
+     * All registered users via the same `/auth/allUsers` path as login/register (reliable behind nginx).
+     * Used by admin panels when per-user lookups fail or to batch-resolve organizer display names.
+     */
+    getBulkIdentityProfiles: () => fetchAuthAllUsersBulkProfiles(),
 
     /** Identity user lookup (authenticated). Used when event-service organizer cache is missing. */
     getIdentityUserById: async (userId: string): Promise<{

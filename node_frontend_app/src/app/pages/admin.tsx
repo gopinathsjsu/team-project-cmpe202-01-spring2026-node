@@ -191,15 +191,27 @@ export function AdminPanel() {
                 )];
 
                 const nameById: Record<string, string> = {};
+                try {
+                    const profiles = await api.getBulkIdentityProfiles();
+                    for (const oid of ownerIdsMissingName) {
+                        const p = profiles[oid];
+                        if (p) nameById[oid] = displayNameFromIdentityUser(p);
+                    }
+                } catch {
+                    /* Same-origin /auth/allUsers uses identity like login — if it fails, try per-user */
+                }
+
                 await Promise.all(
-                    ownerIdsMissingName.map(async (oid) => {
-                        try {
-                            const u = await api.getIdentityUserById(oid);
-                            if (u?.id) nameById[oid] = displayNameFromIdentityUser(u);
-                        } catch {
-                            /* event DB has no organizer row; identity lookup is best-effort */
-                        }
-                    }),
+                    ownerIdsMissingName
+                        .filter((oid) => !nameById[oid])
+                        .map(async (oid) => {
+                            try {
+                                const u = await api.getIdentityUserById(oid);
+                                if (u?.id) nameById[oid] = displayNameFromIdentityUser(u);
+                            } catch {
+                                /* event-service may have stale UUID; GET /users/:id remains best-effort */
+                            }
+                        }),
                 );
 
                 const enriched = rows.map((ev) => {
