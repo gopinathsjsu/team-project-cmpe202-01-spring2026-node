@@ -90,7 +90,7 @@ export function Dashboard() {
             .then((data) => {
                 if (cancelled) return;
                 const users = Array.isArray(data) ? data : [];
-                console.log(users);
+                //console.log(users);
                 setTotalUserCount(data.totalElements ?? users.length);
                 setAdminUserCount(users.filter((u) => u.role === 'ADMIN').length);
                 setOrganizersCount(users.filter((u) => u.role === 'ORGANIZER').length);
