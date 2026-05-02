@@ -127,4 +127,30 @@ systemctl enable --now nginx
 systemctl restart nginx
 
 cd /opt/node-app/node_backend_app
-docker compose up -d --build postgres zookeeper kafka events-service booking-service identity-service notification-service discovery-service
+# First boot: build and start stack (userdata already waited for nginx).
+docker compose up -d --build
+
+# Subsequent boots: systemd runs `compose up -d` (no rebuild). Container `restart` policies keep services up.
+if [ -f /opt/node-app/deploy-artifacts/node-docker-compose.service ]; then
+  cp /opt/node-app/deploy-artifacts/node-docker-compose.service /etc/systemd/system/node-docker-compose.service
+else
+  cat >/etc/systemd/system/node-docker-compose.service <<'UNIT'
+[Unit]
+Description=Node event platform (docker compose)
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/node-app/node_backend_app
+ExecStart=/usr/bin/docker compose up -d
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+fi
+systemctl daemon-reload
+systemctl enable --now node-docker-compose.service
