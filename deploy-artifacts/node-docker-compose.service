@@ -1,0 +1,25 @@
+# Optional: boot-time stack on EC2 (Amazon Linux / systemd)
+#
+# Install:
+#   sudo cp node-docker-compose.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now node-docker-compose.service
+#
+# Edit WorkingDirectory if your compose file is not under /opt/node-app/node_backend_app.
+# Requires Docker daemon (ec2-user must be in `docker` group, or run this unit as root).
+
+[Unit]
+Description=Node event platform (docker compose)
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/node-app/node_backend_app
+ExecStart=/usr/bin/docker compose up -d
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

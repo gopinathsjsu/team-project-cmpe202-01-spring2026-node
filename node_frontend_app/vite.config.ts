@@ -15,6 +15,7 @@ export default defineConfig({
     proxy: {
       '/api/v1/auth': { target: 'http://localhost:8081', changeOrigin: true },
       '/api/v1/me': { target: 'http://localhost:8081', changeOrigin: true },
+      '/api/v1/users': { target: 'http://localhost:8081', changeOrigin: true },
       '/api/v1/admin': { target: 'http://localhost:8081', changeOrigin: true },
       '/api/v1/organizers': { target: 'http://localhost:8081', changeOrigin: true },
       '/api/v1/bookings': { target: 'http://localhost:8082', changeOrigin: true },
