@@ -211,7 +211,52 @@ export function Profile() {
         });
     };
 
+    const validateProfile = (): boolean => {
+        const username = formData.username.trim();
+        const firstName = formData.firstName.trim();
+        const lastName = formData.lastName.trim();
+        const phone = formData.phone.trim();
+        const location = formData.location.trim();
+        const bio = formData.bio.trim();
+        const timezone = formData.timezone.trim();
+        const interests = interestItems;
+
+        if (!username) {
+            toast.error('Username is required');
+            return false;
+        }
+        if (!firstName || !lastName) {
+            toast.error('Both first name and last name are required');
+            return false;
+        }
+        if (!phone || !/^[+\d][\d\s().-]{6,}$/.test(phone)) {
+            toast.error('Please enter a valid phone number');
+            return false;
+        }
+        if (!location) {
+            toast.error('Please enter your location');
+            return false;
+        }
+        if (!bio || bio.length < 10) {
+            toast.error('Bio should be at least 10 characters long');
+            return false;
+        }
+        if (!timezone) {
+            toast.error('Please select a timezone');
+            return false;
+        }
+        if (interests.length === 0) {
+            toast.error('Add at least one interest');
+            return false;
+        }
+        return true;
+    };
+
     const handleSave = () => {
+        if (!validateProfile()) {
+            return;
+        }
+
         api.updateMyProfile({
             username: formData.username.trim() || undefined,
             firstName: formData.firstName.trim() || undefined,

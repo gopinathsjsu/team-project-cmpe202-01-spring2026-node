@@ -7,7 +7,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { ArrowLeft, Plus, X, MapPin, Upload, Link2 } from 'lucide-react';
+import { ArrowLeft, X, MapPin, Upload, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '../components/ui/badge';
 import { runAPI, newTicketTypeRow } from '../api';
@@ -81,7 +81,6 @@ export function CreateEvent() {
     tags: [] as string[],
   });
 
-  const [tagInput, setTagInput] = useState('');
   const [selectKey, setSelectKey] = useState(0);
   const [ticketTypeRows, setTicketTypeRows] = useState<TicketTypeDraft[]>(() => [
     newTicketTypeRow({
@@ -201,12 +200,31 @@ export function CreateEvent() {
   const handleSubmit = async (e: React.FormEvent, status: 'DRAFT' | 'SUBMITTED') => {
     e.preventDefault();
 
-    if (!formData.eventName || formData.categories.length === 0 || !formData.startDate || !formData.startTime || !formData.endDate || !formData.endTime || !formData.eventTimeZone || !formData.location) {
-      toast.error('Please fill in all required fields');
+    const title = formData.eventName.trim();
+    const description = formData.eventDescription.trim();
+    const venue = formData.venue.trim();
+    const location = formData.location.trim();
+
+    if (!title || !description || formData.categories.length === 0 || !formData.startDate || !formData.startTime || !formData.endDate || !formData.endTime || !formData.eventTimeZone || !location || !venue) {
+      toast.error('Please fill in all required event details');
+      return;
+    }
+    if (title.length < 3) {
+      toast.error('Event title must be at least 3 characters long');
+      return;
+    }
+    if (description.length < 20) {
+      toast.error('Event description must be at least 20 characters long');
       return;
     }
     if (!currentUser?.id) {
       toast.error('Please login to create an event');
+      return;
+    }
+
+    const invalidTicketRow = ticketTypeRows.find((row) => row.ticketType.trim().length === 0 || row.totalQuantity <= 0 || row.price < 0);
+    if (invalidTicketRow) {
+      toast.error('All ticket types must have a name, a positive quantity, and a non-negative price');
       return;
     }
 
@@ -316,23 +334,6 @@ export function CreateEvent() {
     }
   };
 
-  const addTag = () => {
-    if (tagInput && !formData.tags.includes(tagInput)) {
-      setFormData(prev => ({
-        ...prev,
-        tags: [...prev.tags, tagInput]
-      }));
-      setTagInput('');
-    }
-  };
-
-  const removeTag = (tag: string) => {
-    setFormData(prev => ({
-      ...prev,
-      tags: prev.tags.filter(t => t !== tag)
-    }));
-  };
-
   const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2 MB — base64 in JSON can be large; use URL for bigger files
 
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -430,6 +431,8 @@ export function CreateEvent() {
                     <Input
                       id="eventName"
                       value={formData.eventName}
+                      minLength={2}
+                      maxLength={100}
                       onChange={(e) => setFormData(prev => ({ ...prev, eventName: e.target.value }))}
                       placeholder="Enter event title"
                       required

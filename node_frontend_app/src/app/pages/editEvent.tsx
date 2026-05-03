@@ -263,9 +263,33 @@ export function EditEvent() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        const title = formData.eventName.trim();
+        const description = formData.eventDescription.trim();
+        const venue = formData.venue.trim();
+        const location = formData.location.trim();
+
+        if (!title || !description || formData.categories.length === 0 || !venue || !location) {
+            toast.error('Please fill in all required event fields');
+            return;
+        }
+        if (title.length < 3) {
+            toast.error('Event title must be at least 3 characters long');
+            return;
+        }
+        if (description.length < 20) {
+            toast.error('Event description must be at least 20 characters long');
+            return;
+        }
+
         const validTicketRows = ticketTypeRows.filter((r) => r.ticketType.trim() && r.totalQuantity > 0);
         if (validTicketRows.length === 0) {
             toast.error('Add at least one ticket type with a name and quantity');
+            return;
+        }
+
+        const invalidTicketRow = ticketTypeRows.find((row) => row.ticketType.trim().length === 0 || row.totalQuantity <= 0 || row.price < 0);
+        if (invalidTicketRow) {
+            toast.error('All ticket types must have a name, a positive quantity, and a non-negative price');
             return;
         }
 

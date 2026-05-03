@@ -21,20 +21,40 @@ export function Register() {
   const [role, setRole] = useState<'ATTENDEE' | 'ORGANIZER'>('ATTENDEE');
   const [submitting, setSubmitting] = useState(false);
 
+  const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password.trim() || !username.trim()) {
-      toast.error('Username, email and password are required');
+    const usernameValue = username.trim();
+    const firstNameValue = firstName.trim();
+    const lastNameValue = lastName.trim();
+    const emailValue = email.trim();
+    const passwordValue = password.trim();
+
+    if (!usernameValue || !emailValue || !passwordValue || !firstNameValue || !lastNameValue) {
+      toast.error('Please complete all required fields');
+      return;
+    }
+    if (usernameValue.length < 3) {
+      toast.error('Username must be at least 3 characters');
+      return;
+    }
+    if (!isValidEmail(emailValue)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    if (passwordValue.length < 8) {
+      toast.error('Password must be at least 8 characters');
       return;
     }
     try {
       setSubmitting(true);
       const user = await api.register({
-        firstName: firstName.trim() || undefined,
-        lastName: lastName.trim() || undefined,
-        username: username.trim(),
-        email,
-        password,
+        firstName: firstNameValue,
+        lastName: lastNameValue,
+        username: usernameValue,
+        email: emailValue,
+        password: passwordValue,
         role,
       });
       setCurrentUser(user);
@@ -74,6 +94,8 @@ export function Register() {
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="John"
+                  required
+                  minLength={2}
                 />
               </div>
               <div className="space-y-2">
@@ -84,6 +106,8 @@ export function Register() {
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder="Doe"
+                  required
+                  minLength={2}
                 />
               </div>
             </div>
