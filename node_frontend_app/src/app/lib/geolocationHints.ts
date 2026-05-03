@@ -8,7 +8,7 @@ export function geolocationUnavailableReason(): string | null {
         return 'Geolocation is not supported by this browser.';
     }
     if (typeof window !== 'undefined' && !window.isSecureContext) {
-        return 'GPS only works over HTTPS (or http://localhost). Search for an address, or click the map to drop a pin.';
+        return "GPS only works on HTTPS or localhost (browsers block it on http://PUBLIC_IP). Add a subdomain (e.g. app.yourdomain.com → this server's IP) with TLS, or search / tap the map instead.";
     }
     return null;
 }

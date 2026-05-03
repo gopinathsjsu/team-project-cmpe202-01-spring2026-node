@@ -20,7 +20,7 @@ Install the following before running anything:
 node_backend_app/
 ├── eventServices/        Spring Boot — Event & Auth API (port 8080)
 └── notificationService/  Spring Boot — Notification Service (port 8081)
-node_frontend_app/        React + Vite frontend (port 5173)
+node_frontend_app/        React + Vite frontend (port 5174)
 ```
 
 ---
@@ -146,7 +146,7 @@ npm install
 npm run dev
 ```
 
-- App URL: `http://localhost:5173`
+- App URL: `http://localhost:5174`
 
 **Other frontend commands:**
 ```bash

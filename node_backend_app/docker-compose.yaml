@@ -12,12 +12,42 @@
 #   PostgreSQL (PostGIS)  localhost:5433
 #   Kafka                 localhost:9092
 #
-# Databases: events_db, booking_db, identity_db, notification_db (user: postgres / password: password)
+# EC2 note: Stable project name + shared bridge network avoids UnknownHostException: postgres
+# when compose is run from different paths. Use `docker compose -p node-platform` if you pass -f
+# from outside this directory. Prefer t3.small+ for all services; free-tier + swap is tight.
+
+name: node-platform
+
+networks:
+  node-platform-net:
+    name: node-platform-net
+
+x-spring-jvm: &spring-jvm
+  JAVA_TOOL_OPTIONS: "-XX:TieredStopAtLevel=1 -Xmx300m -Xms128m"
+
+x-spring-hikari: &spring-hikari
+  SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "5"
+  SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT: "60000"
+  SPRING_DATASOURCE_HIKARI_VALIDATION_TIMEOUT: "5000"
+
+x-spring-healthcheck: &spring-healthcheck
+  interval: 15s
+  timeout: 12s
+  retries: 20
+  start_period: 240s
 
 services:
   postgres:
     image: postgis/postgis:15-3.3
     container_name: node-postgres
+
+
+    restart: unless-stopped
+    networks:
+      node-platform-net:
+        aliases:
+          - postgres
+ (Identity: normalize email on login; frontend: login errors)
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
@@ -31,12 +61,18 @@ services:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
-      retries: 10
-      start_period: 10s
+      retries: 15
+      start_period: 30s
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: node-zookeeper
+<<<<<<< HEAD
+=======
+    restart: unless-stopped
+    networks:
+      - node-platform-net
+>>>>>>> 86451e1 (Identity: normalize email on login; frontend: login errors)
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -46,6 +82,12 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     container_name: node-kafka
+<<<<<<< HEAD
+=======
+    restart: unless-stopped
+    networks:
+      - node-platform-net
+>>>>>>> 86451e1 (Identity: normalize email on login; frontend: login errors)
     depends_on:
       - zookeeper
     ports:
@@ -59,17 +101,29 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+<<<<<<< HEAD
     healthcheck:
       test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1"]
       interval: 10s
       timeout: 10s
       retries: 6
       start_period: 30s
+=======
+      KAFKA_HEAP_OPTS: "-Xmx256m -Xms256m"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1"]
+      interval: 15s
+      timeout: 15s
+      retries: 25
+      start_period: 180s
+>>>>>>> 86451e1 (Identity: normalize email on login; frontend: login errors)
 
   # One-shot topic bootstrap. Idempotent (--if-not-exists).
   kafka-init:
     image: confluentinc/cp-kafka:7.5.0
     container_name: node-kafka-init
+    networks:
+      - node-platform-net
     depends_on:
       kafka:
         condition: service_healthy
@@ -85,9 +139,17 @@ services:
       context: ./eventServices
       dockerfile: Dockerfile
     container_name: events-service
+<<<<<<< HEAD
+=======
+    restart: unless-stopped
+    init: true
+    networks:
+      - node-platform-net
+>>>>>>> 86451e1 (Identity: normalize email on login; frontend: login errors)
     ports:
       - "8080:8080"
     environment:
+      <<: [*spring-jvm, *spring-hikari]
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/event_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: password
@@ -100,20 +162,25 @@ services:
       kafka:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/liveness"]
+      <<: *spring-healthcheck
 
   booking-service:
     build:
       context: ./bookingService
       dockerfile: Dockerfile
     container_name: booking-service
+<<<<<<< HEAD
+=======
+    restart: unless-stopped
+    init: true
+    networks:
+      - node-platform-net
+>>>>>>> 86451e1 (Identity: normalize email on login; frontend: login errors)
     ports:
       - "8082:8082"
     environment:
+      <<: [*spring-jvm, *spring-hikari]
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/event_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: password
@@ -129,20 +196,25 @@ services:
       events-service:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
+      test: ["CMD", "curl", "-fsS", "http://localhost:8082/actuator/health/liveness"]
+      <<: *spring-healthcheck
 
   identity-service:
     build:
       context: ./identity-service
       dockerfile: Dockerfile
     container_name: identity-service
+<<<<<<< HEAD
+=======
+    restart: unless-stopped
+    init: true
+    networks:
+      - node-platform-net
+>>>>>>> 86451e1 (Identity: normalize email on login; frontend: login errors)
     ports:
       - "8081:8081"
     environment:
+      <<: [*spring-jvm, *spring-hikari]
       SERVER_PORT: 8081
       DB_HOST: postgres
       DB_PORT: "5432"
@@ -157,20 +229,25 @@ services:
       events-service:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/actuator/health/liveness"]
+      <<: *spring-healthcheck
 
   notification-service:
     build:
       context: ./notificationService
       dockerfile: Dockerfile
     container_name: notification-service
+<<<<<<< HEAD
+=======
+    restart: unless-stopped
+    init: true
+    networks:
+      - node-platform-net
+>>>>>>> 86451e1 (Identity: normalize email on login; frontend: login errors)
     ports:
       - "8083:8083"
     environment:
+      <<: [*spring-jvm, *spring-hikari]
       SERVER_PORT: 8083
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/notification_db
       SPRING_DATASOURCE_USERNAME: postgres
@@ -189,20 +266,25 @@ services:
       kafka-init:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
+      test: ["CMD", "curl", "-fsS", "http://localhost:8083/actuator/health/liveness"]
+      <<: *spring-healthcheck
 
   discovery-service:
     build:
       context: ./discoveryService
       dockerfile: Dockerfile
     container_name: discovery-service
+<<<<<<< HEAD
+=======
+    restart: unless-stopped
+    init: true
+    networks:
+      - node-platform-net
+>>>>>>> 86451e1 (Identity: normalize email on login; frontend: login errors)
     ports:
       - "8084:8084"
     environment:
+      <<: [*spring-jvm, *spring-hikari]
       SERVER_PORT: 8084
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/event_db
       SPRING_DATASOURCE_USERNAME: postgres
@@ -214,11 +296,8 @@ services:
       events-service:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
+      test: ["CMD", "curl", "-fsS", "http://localhost:8084/actuator/health/liveness"]
+      <<: *spring-healthcheck
 
 volumes:
   postgres_data:

@@ -50,6 +50,8 @@ management:
   endpoint:
     health:
       show-details: when_authorized
+      probes:
+        enabled: true
 
 springdoc:
   api-docs:
