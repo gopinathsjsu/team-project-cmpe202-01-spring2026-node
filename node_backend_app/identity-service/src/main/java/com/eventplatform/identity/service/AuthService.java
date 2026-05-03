@@ -118,18 +118,19 @@ public class AuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request, String ipAddress) {
-        log.info("Login attempt: email={}, ip={}", request.getEmail(), ipAddress);
+        String email = normalizeEmail(request.getEmail());
+        log.info("Login attempt: email={}, ip={}", email, ipAddress);
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+                    new UsernamePasswordAuthenticationToken(email, request.getPassword()));
         } catch (BadCredentialsException e) {
             auditLogService.log(null, "LOGIN_FAILURE", "USER", null,
-                    Map.of("email", request.getEmail()), ipAddress);
-            log.warn("Login failed: email={}, ip={}, reason=invalid_credentials", request.getEmail(), ipAddress);
+                    Map.of("email", email), ipAddress);
+            log.warn("Login failed: email={}, ip={}, reason=invalid_credentials", email, ipAddress);
             throw new BadCredentialsException("Invalid email or password");
         }
 
-        User user = userRepository.findByEmail(request.getEmail())
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
 
         String accessToken = jwtProvider.generateAccessToken(user.getId(), user.getEmail(), user.getRole());
@@ -190,6 +191,10 @@ public class AuthService {
                 .refreshExpiresIn(refreshTokenExpirationMs / 1000L)
                 .tokenType("Bearer")
                 .build();
+    }
+
+    private static String normalizeEmail(String raw) {
+        return raw == null ? "" : raw.trim().toLowerCase();
     }
 
     private void ensureEmailAvailable(String email) {

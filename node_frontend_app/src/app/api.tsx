@@ -185,6 +185,7 @@ axios.interceptors.request.use((config) => {
   const isAuthPath =
     requestUrl.includes('/auth/login') ||
     requestUrl.includes('/auth/register') ||
+    requestUrl.includes('/auth/bootstrap-admin') ||
     requestUrl.includes('/auth/refresh');
 
   if (isAuthPath) {
@@ -208,6 +209,7 @@ axios.interceptors.response.use(
     const isAuthPath =
       requestUrl.includes('/auth/login') ||
       requestUrl.includes('/auth/register') ||
+      requestUrl.includes('/auth/bootstrap-admin') ||
       requestUrl.includes('/auth/refresh');
 
     if (status !== 401 || !originalRequest || originalRequest._retry || isAuthPath) {

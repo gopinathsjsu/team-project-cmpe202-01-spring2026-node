@@ -27,9 +27,18 @@ export function Login() {
       const user = await api.login(email, password);
       setCurrentUser(user);
       toast.success('Logged in successfully');
-      navigate('/dashboard');
+      navigate(user.role === 'ADMIN' ? '/admin' : '/dashboard');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Login failed';
+      const axiosMsg =
+        typeof err === 'object' &&
+        err !== null &&
+        'response' in err &&
+        typeof (err as { response?: { data?: unknown } }).response?.data === 'object' &&
+        (err as { response?: { data?: { message?: string } } }).response?.data != null &&
+        typeof (err as { response: { data: { message?: string } } }).response.data.message === 'string'
+          ? (err as { response: { data: { message: string } } }).response.data.message
+          : null;
+      const message = axiosMsg || (err instanceof Error ? err.message : 'Login failed');
       toast.error(message);
     } finally {
       setSubmitting(false);
@@ -41,7 +50,10 @@ export function Login() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Sign in</CardTitle>
-          <CardDescription>Access your account to manage events and bookings.</CardDescription>
+          <CardDescription>
+          Sign in with your <strong>email</strong> (not username). Admins cannot register on the signup page —
+          create the first admin via &quot;bootstrap&quot; once, below.
+        </CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={handleSubmit}>
