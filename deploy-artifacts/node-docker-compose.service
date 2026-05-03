@@ -10,15 +10,16 @@
 
 [Unit]
 Description=Node event platform (docker compose)
-After=docker.service network-online.target
-Wants=network-online.target
+After=docker.service network-online.target nginx.service
+Wants=network-online.target nginx.service
 Requires=docker.service
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=/opt/node-app/node_backend_app
-ExecStart=/usr/bin/docker compose up -d
+# Project name matches top-level `name:` in docker-compose.yaml (stable DNS / volumes).
+ExecStart=/usr/bin/docker compose -p node-platform up -d
 TimeoutStartSec=0
 
 [Install]

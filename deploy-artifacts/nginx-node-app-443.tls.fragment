@@ -1,0 +1,32 @@
+# Appended only when certs exist under /etc/letsencrypt/live/__NODE_TLS_HOSTNAME__/.
+# Substitute __NODE_TLS_HOSTNAME__ before loading (assemble-nginx-node-app.sh).
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name __NODE_TLS_HOSTNAME__;
+
+    ssl_certificate /etc/letsencrypt/live/__NODE_TLS_HOSTNAME__/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/__NODE_TLS_HOSTNAME__/privkey.pem;
+
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1440m;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    # Teach the browser to prefer HTTPS (stops http:// bookmarks / autocomplete from sticking on "Not Secure").
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+
+    root /opt/node-app/node_frontend_app/dist;
+    index index.html;
+
+    proxy_connect_timeout 15s;
+    proxy_send_timeout 90s;
+    proxy_read_timeout 90s;
+
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 512;
+    gzip_comp_level 5;
+    gzip_types text/plain text/css application/javascript application/json text/xml application/xml image/svg+xml;
+
+    include /etc/nginx/snippets/node-app-api-locations.conf;
+}

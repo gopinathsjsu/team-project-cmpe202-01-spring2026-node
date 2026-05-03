@@ -1,0 +1,16 @@
+# HTTP for this hostname only — ACME + redirect everything else to HTTPS.
+# Placeholder __NODE_TLS_HOSTNAME__ is substituted by assemble-nginx-node-app.sh.
+server {
+    listen 80;
+    server_name __NODE_TLS_HOSTNAME__;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type "text/plain";
+        allow all;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}

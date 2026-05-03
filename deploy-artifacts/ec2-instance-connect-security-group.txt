@@ -1,0 +1,23 @@
+Fix “Failed to connect / Error establishing SSH connection” on EC2 Instance Connect (browser)
+============================================================================================
+
+1. Open EC2 → your instance → Security tab → click the attached security group (e.g. node-free-tier-sg-…).
+
+2. Edit inbound rules. For SSH port 22 you need BOTH:
+   A) Browser Instance Connect — Source = AWS managed prefix list for YOUR region:
+      • us-west-2 (Oregon):  com.amazonaws.us-west-2.ec2-instance-connect
+      In “Source”, choose Prefix list → search ec2-instance-connect for your region.
+
+   B) SSH from your laptop / Cursor — Source = Your public IP (/32), or 0.0.0.0/0 temporarily.
+
+   Opening 22 ONLY to “My IP” is NOT enough for the EC2-console Instance Connect tunnel.
+
+3. Confirm the subnet routes 0.0.0.0/0 → internet gateway (standard public subnet).
+
+4. Instance state = running, with a current public IPv4 (or Elastic IP).
+
+5. If rules are correct but connection still hangs: Actions → Instance state → Reboot
+   (heavy Docker builds on small tiers can wedge sshd until reboot).
+
+Official doc: “Prerequisites for EC2 Instance Connect” — prefix list per region.
+https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-connect-prerequisites.html
