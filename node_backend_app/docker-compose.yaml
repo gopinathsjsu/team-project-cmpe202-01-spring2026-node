@@ -47,7 +47,6 @@ services:
       node-platform-net:
         aliases:
           - postgres
- (Identity: normalize email on login; frontend: login errors)
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
@@ -67,12 +66,9 @@ services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: node-zookeeper
-<<<<<<< HEAD
-=======
     restart: unless-stopped
     networks:
       - node-platform-net
->>>>>>> 86451e1 (Identity: normalize email on login; frontend: login errors)
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -82,12 +78,9 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     container_name: node-kafka
-<<<<<<< HEAD
-=======
     restart: unless-stopped
     networks:
       - node-platform-net
->>>>>>> 86451e1 (Identity: normalize email on login; frontend: login errors)
     depends_on:
       - zookeeper
     ports:
@@ -101,14 +94,6 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-<<<<<<< HEAD
-    healthcheck:
-      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1"]
-      interval: 10s
-      timeout: 10s
-      retries: 6
-      start_period: 30s
-=======
       KAFKA_HEAP_OPTS: "-Xmx256m -Xms256m"
     healthcheck:
       test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1"]
@@ -116,7 +101,6 @@ services:
       timeout: 15s
       retries: 25
       start_period: 180s
->>>>>>> 86451e1 (Identity: normalize email on login; frontend: login errors)
 
   # One-shot topic bootstrap. Idempotent (--if-not-exists).
   kafka-init:
@@ -139,13 +123,10 @@ services:
       context: ./eventServices
       dockerfile: Dockerfile
     container_name: events-service
-<<<<<<< HEAD
-=======
     restart: unless-stopped
     init: true
     networks:
       - node-platform-net
->>>>>>> 86451e1 (Identity: normalize email on login; frontend: login errors)
     ports:
       - "8080:8080"
     environment:
@@ -170,13 +151,10 @@ services:
       context: ./bookingService
       dockerfile: Dockerfile
     container_name: booking-service
-<<<<<<< HEAD
-=======
     restart: unless-stopped
     init: true
     networks:
       - node-platform-net
->>>>>>> 86451e1 (Identity: normalize email on login; frontend: login errors)
     ports:
       - "8082:8082"
     environment:
@@ -204,13 +182,10 @@ services:
       context: ./identity-service
       dockerfile: Dockerfile
     container_name: identity-service
-<<<<<<< HEAD
-=======
     restart: unless-stopped
     init: true
     networks:
       - node-platform-net
->>>>>>> 86451e1 (Identity: normalize email on login; frontend: login errors)
     ports:
       - "8081:8081"
     environment:
@@ -237,13 +212,10 @@ services:
       context: ./notificationService
       dockerfile: Dockerfile
     container_name: notification-service
-<<<<<<< HEAD
-=======
     restart: unless-stopped
     init: true
     networks:
       - node-platform-net
->>>>>>> 86451e1 (Identity: normalize email on login; frontend: login errors)
     ports:
       - "8083:8083"
     environment:
@@ -274,13 +246,10 @@ services:
       context: ./discoveryService
       dockerfile: Dockerfile
     container_name: discovery-service
-<<<<<<< HEAD
-=======
     restart: unless-stopped
     init: true
     networks:
       - node-platform-net
->>>>>>> 86451e1 (Identity: normalize email on login; frontend: login errors)
     ports:
       - "8084:8084"
     environment:

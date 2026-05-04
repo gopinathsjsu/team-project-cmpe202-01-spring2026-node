@@ -398,8 +398,12 @@ export function AdminPanel() {
                 refreshUsers(0);
             })
             .catch((err: unknown) => {
-                const message = err instanceof Error ? err.message : 'Failed to create admin';
-                toast.error(message);
+                const ax = err as { response?: { data?: { message?: string; details?: { message?: string }[] } } };
+                const apiMsg =
+                    ax.response?.data?.message ||
+                    ax.response?.data?.details?.map((d) => d.message).filter(Boolean).join('; ') ||
+                    (err instanceof Error ? err.message : null);
+                toast.error(apiMsg || 'Failed to create admin');
             });
     };
 
@@ -884,7 +888,7 @@ function EventManagementList({
     loading,
     onApprove,
     onReject,
-    onSuspend,
+    onSuspend: _onSuspend,
     onCancel,
     onToSubmit,
     navigate,

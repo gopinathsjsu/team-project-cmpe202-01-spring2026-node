@@ -653,16 +653,29 @@ export function runAPI() {
       if (params.role) sp.set('role', params.role);
       if (params.q?.trim()) sp.set('q', params.q.trim());
       const response = await axios.get(`${API_BASE_URL}/admin/users?${sp.toString()}`);
-      const data = response.data;
-      const rawContent = Array.isArray(data.content) ? data.content : [];
-      const content: AdminUserRow[] = rawContent.map((row: { id?: string; email?: string; role?: AdminUserRow['role'] }) => ({
+      const data = response.data as Record<string, unknown>;
+      // Identity returns PagedUsersResponse { users, page, ... }; Spring Page uses { content, number, ... }
+      const rawList = (
+        Array.isArray(data.users) ? data.users : Array.isArray(data.content) ? data.content : []
+      ) as Array<{ id?: unknown; email?: string; role?: AdminUserRow['role'] }>;
+      const content: AdminUserRow[] = rawList.map((row) => ({
         id: row.id != null ? String(row.id) : '',
         email: row.email ?? '',
         role: (row.role ?? 'ATTENDEE') as AdminUserRow['role'],
       }));
+      const pageNum = Number(data.page ?? data.number ?? 0);
+      const totalPages = Number(data.totalPages ?? 0);
+      const totalElements = Number(data.totalElements ?? 0);
+      const size = Number(data.size ?? params.size ?? 10);
+      const hasNext = Boolean(data.hasNext);
       return {
-        ...data,
         content,
+        totalElements,
+        totalPages,
+        number: pageNum,
+        size,
+        first: pageNum === 0,
+        last: !hasNext,
       };
     },
 
@@ -671,9 +684,11 @@ export function runAPI() {
       sp.set('page', '0');
       sp.set('size', '500');
       const response = await axios.get(`${API_BASE_URL}/admin/users?${sp.toString()}`);
-      const data = response.data;
-      const rawContent = Array.isArray(data.content) ? data.content : [];
-      return rawContent.map((row: { id?: string; email?: string; role?: User['role'] }) => ({
+      const data = response.data as Record<string, unknown>;
+      const rawList = (
+        Array.isArray(data.users) ? data.users : Array.isArray(data.content) ? data.content : []
+      ) as Array<{ id?: unknown; email?: string; role?: User['role'] }>;
+      return rawList.map((row) => ({
         id: row.id != null ? String(row.id) : '',
         name: row.email ?? '',
         email: row.email ?? '',
@@ -693,9 +708,10 @@ export function runAPI() {
 
     // Admin user management
     getAdminUsers: async (page = 0, size = 20): Promise<AdminUsersPage> => {
-      //const response = await axios.get(`${API_BASE_URL}/admin/users?page=${page}&size=${size}`);
-      const response = await axios.get(`${API_BASE_URL}/auth/allUsers`);
-      return response.data;
+      const response = await axios.get(`${API_BASE_URL}/admin/users`, {
+        params: { page, size },
+      });
+      return response.data as AdminUsersPage;
     },
     createAdminUser: async (payload: CreateAdminPayload): Promise<{
       id: string;
