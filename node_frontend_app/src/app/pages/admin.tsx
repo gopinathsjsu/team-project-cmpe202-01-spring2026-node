@@ -766,7 +766,7 @@ export function AdminPanel() {
                     </CardContent>
                 </Card>
 
-                {/* <Card className="mt-8">
+                <Card className="mt-8">
                     <CardHeader>
                         <CardTitle>Admin User Management</CardTitle>
                         <CardDescription>Create admins and browse users with pagination</CardDescription>
@@ -779,12 +779,12 @@ export function AdminPanel() {
                             <Input type="email" placeholder="Email" value={newAdmin.email} onChange={(e) => setNewAdmin((prev) => ({ ...prev, email: e.target.value }))} />
                             <Input type="password" placeholder="Password" value={newAdmin.password} onChange={(e) => setNewAdmin((prev) => ({ ...prev, password: e.target.value }))} />
                         </div>
-                        {/* <div className="flex justify-end mb-6">
+                        <div className="flex justify-end mb-6">
                             <Button onClick={handleCreateAdmin}>
                                 <UserPlus className="h-4 w-4 mr-2" />
                                 Create Admin
                             </Button>
-                        </div> * /}
+                        </div>
 
                         <div className="space-y-3">
                             {usersData.users.map((user) => (
@@ -874,7 +874,6 @@ export function AdminPanel() {
                     </CardContent>
 
                 </Card>
-                */}
             </div>
         </div>
     );
