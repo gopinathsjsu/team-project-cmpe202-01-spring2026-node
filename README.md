@@ -1,13 +1,29 @@
 [![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/xRTHk3Dv)
 
-Team is following Scrum Practices to develop Node app:
+## Team
 
-Link to tracking sheet: https://docs.google.com/spreadsheets/d/1sS17w_S_EZQKe112ugmivBW-0eAAfOS5-_SmnGEWTso/edit?gid=1830485995#gid=1830485995 
+**Team name:** Node — CMPE 202 *(replace with your official roster name if your instructor uses a different label).*
 
+**Members and contribution areas**
+
+| Team member | Summary of contribution areas |
+|-------------|--------------------------------|
+| **Megha Gangal** | **Identity service** (authentication, JWT, RBAC, admin APIs, Flyway, health/docs) and **AWS deployment** (EC2, Docker Compose, Nginx, deploy/heal scripts). |
+| **Mansi Gupta** | *Add your summary (e.g. services, UI, APIs, backlog ownership).* |
+| **Kavan** | *Add your summary.* |
+| **Nikhila** | *Add your summary.* |
+
+**Project journal (GitHub):** [Team repository](https://github.com/gopinathsjsu/team-project-cmpe202-01-spring2026-node) — *replace with the direct URL to your published journal when you have one (for example the repo **Wiki**, a `docs/` journal file, or **Discussions** if that is what the course uses).*  
+
+**Product backlog and sprint backlogs (Google Sheet):** [CMPE_202: Node Tracking List](https://docs.google.com/spreadsheets/d/1sS17w_S_EZQKe112ugmivBW-0eAAfOS5-_SmnGEWTso/edit?gid=1830485995#gid=1830485995) — Product Backlog and per-sprint tabs (Sprint-1, Sprint-2, etc.).
+
+---
+
+Team is following Scrum Practices to develop Node app.
 
 Node is an event-management app that is used by:
 
-1. Event Orgnizers: To create/ update events
+1. Event Organizers: To create/ update events
 2. Users: To search, view and book free/paid events.
 3. Admins: To approve/disapprove events and view analytics about the platform.
 
@@ -31,13 +47,58 @@ Non Functional Requirement:
 
 Tech Stack:
 
-Python, React, Postgres
-Git
-Excel sheet
-Google meet for conference
+Java 17 (Spring Boot microservices), React (Vite), PostgreSQL (PostGIS), Kafka, Docker Compose, Nginx, AWS EC2  
+Git  
+Excel sheet (sprints / story points)  
+Google Meet for ceremonies  
 
 Architecture Diagram:
-/designs/architecture.pdf
+/designs/architecture.pdf  
+
+Deployment (production overview): [`design/deployment-diagram.md`](design/deployment-diagram.md) (Mermaid + PNG)
+
+---
+
+## Team contributions
+
+### Megha Gangal
+
+**Primary ownership:** **Identity service** and **AWS deployment** (production hosting on EC2).
+
+---
+
+#### 1) Identity service (`node_backend_app/identity-service`)
+
+| Area | What was delivered |
+|------|---------------------|
+| **Authentication** | Register, login, logout, access + refresh tokens (rotation), bootstrap admin for first-time setup |
+| **Authorization** | Spring Security + JWT; **role-based access** for **Attendee**, **Organizer**, and **Admin** |
+| **Profiles** | Current user profile (`/api/v1/me`) and organizer profile endpoints |
+| **Administration** | Admin APIs for user listing (paged), creating additional admins, deactivate/reactivate/delete flows, and **event approve/reject** integration with Event Service |
+| **Security & data** | BCrypt password hashing, Flyway migrations, structured errors, audit logging for sensitive actions |
+| **Observability & testing** | Health endpoint (`/api/v1/health`), Actuator, Swagger / Postman collection for API verification |
+
+---
+
+#### 2) AWS deployment (production)
+
+| Area | What was delivered |
+|------|---------------------|
+| **Runtime** | Single **AWS EC2** host running the full platform (not localhost-only) |
+| **Containers** | **`docker compose`** (`node_backend_app/docker-compose.yaml`, project `node-platform`) for Identity, Events, Booking, Notification, Discovery, **PostgreSQL (PostGIS)**, **Kafka + Zookeeper** |
+| **Edge / TLS** | **Nginx** reverse proxy: serves the **built React SPA** from `/opt/node-app/node_frontend_app/dist` and routes `/api/v1/...` to the correct service ports; **HTTPS** optional via **Let’s Encrypt** (see `deploy-artifacts/`) |
+| **Automation** | **`deploy-artifacts/push-ec2-opt-node-app.sh`** — local `npm run build`, rsync to `/opt/node-app`, remote compose + nginx + **systemd** unit; **EC2 Instance Connect** or `.pem` SSH supported |
+| **Reliability** | **`ensure-app-running.sh`** / **`heal-remote.sh`** to re-assemble nginx config, bring the stack up, and probe health after incidents |
+
+---
+
+#### 3) Supporting work (cross-cutting)
+
+- **Frontend (admin):** Admin user table uses Identity’s **`users`** paged JSON from `GET /api/v1/admin/users`; Admin User Management UI (create admin) and clearer API error toasts where needed  
+- **Repository hygiene:** Valid **`docker-compose.yaml`** (merge conflicts removed) so `docker compose` parses on EC2  
+- **Documentation:** [`design/deployment-diagram.md`](design/deployment-diagram.md) + [`design/deployment-diagram.png`](design/deployment-diagram.png) — simple **deployment diagram** for reports/slides  
+
+---
 
 Database Design:
 
