@@ -487,7 +487,14 @@ public class BookingServiceImpl implements BookingService {
                 .eventName(event != null ? event.getEventName() : null)
                 .eventStartInstant(event != null && event.getEventStartInstant() != null
                         ? event.getEventStartInstant().toString() : null)
+                .eventEndInstant(event != null && event.getEventEndInstant() != null
+                        ? event.getEventEndInstant().toString() : null)
                 .eventTimeZone(event != null ? event.getEventTimeZone() : null)
+                .eventLocationName(event != null && event.getEventLocation() != null
+                        ? event.getEventLocation().getLocationName() : null)
+                .eventLocationAddress(event != null && event.getEventLocation() != null
+                        ? event.getEventLocation().getLocationAddress() : null)
+                .eventDescription(event != null ? event.getEventDescription() : null)
                 .ticketQuantity(booking.getQuantity() != null ? booking.getQuantity() : 0)
                 .totalAmount(booking.getTotalAmount() != null ? booking.getTotalAmount().doubleValue() : 0.0)
                 .build();

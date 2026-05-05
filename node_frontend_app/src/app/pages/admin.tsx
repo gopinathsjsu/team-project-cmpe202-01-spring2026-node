@@ -5,6 +5,15 @@ import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
+import { Textarea } from '../components/ui/textarea';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '../components/ui/dialog';
 import {
     Select,
     SelectContent,
@@ -120,6 +129,13 @@ export function AdminPanel() {
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedEventSearch, setDebouncedEventSearch] = useState('');
     const [activeEventsTab, setActiveEventsTab] = useState('all');
+
+    const [rejectDialog, setRejectDialog] = useState<{ open: boolean; eventId: string | null; reason: string; submitting: boolean }>({
+        open: false,
+        eventId: null,
+        reason: '',
+        submitting: false,
+    });
 
     useEffect(() => {
         const t = window.setTimeout(() => setDebouncedEventSearch(searchQuery), 400);
@@ -329,15 +345,28 @@ export function AdminPanel() {
     };
 
     const handleRejectEvent = (eventId: string) => {
-        // add comment while rejecting an event with a prompt
-        const comment = prompt('Please provide a reason for rejecting this event:');
-        if (comment === null) return;
-        if (confirm('Are you sure you want to reject this event?')) {
-            api.rejectEvent(eventId, currentUser?.id, comment).then(() => {
-                toast.success('Event rejected');
-                refreshEvents();
-            }).catch(() => toast.error('Failed to reject event'));
+        setRejectDialog({ open: true, eventId, reason: '', submitting: false });
+    };
+
+    const submitRejectEvent = () => {
+        const { eventId, reason } = rejectDialog;
+        if (!eventId) return;
+        const trimmed = reason.trim();
+        if (!trimmed) {
+            toast.error('Please provide a rejection reason');
+            return;
         }
+        setRejectDialog((prev) => ({ ...prev, submitting: true }));
+        api.rejectEvent(eventId, currentUser?.id, trimmed)
+            .then(() => {
+                toast.success('Event rejected');
+                setRejectDialog({ open: false, eventId: null, reason: '', submitting: false });
+                refreshEvents();
+            })
+            .catch(() => {
+                toast.error('Failed to reject event');
+                setRejectDialog((prev) => ({ ...prev, submitting: false }));
+            });
     };
 
     const handleSuspendEvent = (eventId: string) => {
@@ -879,6 +908,50 @@ export function AdminPanel() {
 
                 </Card>
             </div>
+
+            <Dialog
+                open={rejectDialog.open}
+                onOpenChange={(open) => {
+                    if (!open && !rejectDialog.submitting) {
+                        setRejectDialog({ open: false, eventId: null, reason: '', submitting: false });
+                    }
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Reject event</DialogTitle>
+                        <DialogDescription>
+                            The organizer will see this reason. Be specific so they can fix and resubmit.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Textarea
+                        placeholder="Reason for rejection (e.g. missing schedule, inappropriate content, duplicate listing)"
+                        value={rejectDialog.reason}
+                        onChange={(e) => setRejectDialog((prev) => ({ ...prev, reason: e.target.value }))}
+                        rows={4}
+                        autoFocus
+                        disabled={rejectDialog.submitting}
+                    />
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() =>
+                                setRejectDialog({ open: false, eventId: null, reason: '', submitting: false })
+                            }
+                            disabled={rejectDialog.submitting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={submitRejectEvent}
+                            disabled={rejectDialog.submitting || !rejectDialog.reason.trim()}
+                        >
+                            {rejectDialog.submitting ? 'Rejecting…' : 'Reject event'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

@@ -29,6 +29,7 @@ export function AttendeesPage() {
     const [event, setEvent] = useState<any>(null);
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [bookingSummary, setBookingSummary] = useState<EventBookingSummary | null>(null);
+    const [rsvpSummary, setRsvpSummary] = useState<{ confirmed: number; declined: number; total: number } | null>(null);
     const [bookingsPage, setBookingsPage] = useState(0);
     const [bookingsTotal, setBookingsTotal] = useState(0);
     const [bookingsTotalPages, setBookingsTotalPages] = useState(0);
@@ -58,12 +59,15 @@ export function AttendeesPage() {
         Promise.all([
             api.getEventBookingSummary(id).catch(() => null),
             api.getEventBookingsPaged({ eventId: id, page: bookingsPage, size: 10 }),
+            api.getEventRsvpSummary(id).catch(() => null),
         ])
-            .then(([summaryData, paged]) => {
+            .then(([summaryData, paged, rsvpData]) => {
+                console.log('[AttendeesPage] eventId=', id, 'bookingSummary=', summaryData, 'rsvpSummary=', rsvpData);
                 setBookingSummary(summaryData);
                 setBookings(Array.isArray(paged.content) ? paged.content : []);
                 setBookingsTotal(paged.totalElements);
                 setBookingsTotalPages(paged.totalPages);
+                setRsvpSummary(rsvpData);
             })
             .catch(console.error)
             .finally(() => setBookingsLoading(false));
@@ -185,6 +189,12 @@ export function AttendeesPage() {
                         <CardContent>
                             <div className="text-2xl font-bold">
                                 {bookingSummary?.confirmedBookingCount ?? confirmed.length}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                                RSVPs: <span className="font-medium text-gray-700">{rsvpSummary?.confirmed ?? 0}</span>
+                                {rsvpSummary && rsvpSummary.declined > 0 && (
+                                    <span className="ml-2">· {rsvpSummary.declined} declined</span>
+                                )}
                             </div>
                         </CardContent>
                     </Card>

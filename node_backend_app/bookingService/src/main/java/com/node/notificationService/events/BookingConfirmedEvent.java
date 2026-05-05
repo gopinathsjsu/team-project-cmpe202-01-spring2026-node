@@ -17,7 +17,11 @@ public class BookingConfirmedEvent {
     private String userName;
     private String eventName;
     private String eventStartInstant;
+    private String eventEndInstant;
     private String eventTimeZone;
+    private String eventLocationName;
+    private String eventLocationAddress;
+    private String eventDescription;
     private int ticketQuantity;
     private double totalAmount;
 }

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"/><title>Event Reminder</title></head>
+<body style="font-family: Arial, sans-serif; color: #333;">
+  <h2>Reminder: your event is tomorrow</h2>
+  <p>Hi <span th:text="${event.userName}">User</span>,</p>
+  <p>This is a quick reminder that <strong th:text="${event.eventName}">Event Name</strong> is happening tomorrow.</p>
+  <table style="border-collapse: collapse; width: 100%; max-width: 500px;">
+    <tr><td style="padding: 8px; border: 1px solid #ddd;">Booking ID</td><td style="padding: 8px; border: 1px solid #ddd;" th:text="${event.bookingId}"></td></tr>
+    <tr><td style="padding: 8px; border: 1px solid #ddd;">Event</td><td style="padding: 8px; border: 1px solid #ddd;" th:text="${event.eventName}"></td></tr>
+    <tr><td style="padding: 8px; border: 1px solid #ddd;">Starts</td><td style="padding: 8px; border: 1px solid #ddd;"><span th:text="${event.eventStartInstant}"></span> (<span th:text="${event.eventTimeZone}"></span>)</td></tr>
+    <tr th:if="${event.eventLocationName != null or event.eventLocationAddress != null}">
+      <td style="padding: 8px; border: 1px solid #ddd;">Location</td>
+      <td style="padding: 8px; border: 1px solid #ddd;">
+        <span th:text="${event.eventLocationName}"></span>
+        <span th:if="${event.eventLocationAddress != null}"> — <span th:text="${event.eventLocationAddress}"></span></span>
+      </td>
+    </tr>
+    <tr><td style="padding: 8px; border: 1px solid #ddd;">Tickets</td><td style="padding: 8px; border: 1px solid #ddd;" th:text="${event.ticketQuantity}"></td></tr>
+  </table>
+  <p style="margin-top: 24px;">Can you make it? Please RSVP so the organizer knows:</p>
+  <p>
+    <a th:href="${event.rsvpConfirmUrl}" th:if="${event.rsvpConfirmUrl != null}"
+       style="display:inline-block;background:#16a34a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;margin-right:8px;">I'll be there</a>
+    <a th:href="${event.rsvpDeclineUrl}" th:if="${event.rsvpDeclineUrl != null}"
+       style="display:inline-block;background:#dc2626;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;">Can't make it</a>
+  </p>
+  <p style="font-size: 12px; color: #777;">These links expire when the event starts.</p>
+</body>
+</html>

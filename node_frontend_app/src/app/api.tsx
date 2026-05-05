@@ -522,6 +522,26 @@ export function runAPI() {
       );
       return response.data;
     },
+
+    getEventRsvpSummary: async (
+      eventId: string
+    ): Promise<{ confirmed: number; declined: number; total: number }> => {
+      const url = `${API_BASE_URL}/notifications/rsvp/event/${encodeURIComponent(eventId)}`;
+      console.log('[RSVP] GET', url);
+      try {
+        const response = await axios.get(url);
+        console.log('[RSVP] raw response for event', eventId, response.status, response.data);
+        const rows: Array<{ status?: string }> = Array.isArray(response.data) ? response.data : [];
+        const confirmed = rows.filter((r) => r.status === 'CONFIRMED').length;
+        const declined = rows.filter((r) => r.status === 'DECLINED').length;
+        const summary = { confirmed, declined, total: rows.length };
+        console.log('[RSVP] summary', summary);
+        return summary;
+      } catch (err) {
+        console.error('[RSVP] fetch failed', err);
+        throw err;
+      }
+    },
     addBooking: async (booking: Booking, ticketTypeName?: string): Promise<Booking> => {
       const response = await axios.post(`${API_BASE_URL}/bookings`, {
         eventId: String(booking.eventId),

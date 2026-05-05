@@ -12,5 +12,5 @@ package com.node.notificationService.events;
  * NotificationConsumer; it has no effect on serialization.
  */
 public sealed interface NotificationEvent
-    permits BookingConfirmedEvent, BookingPendingEvent, BookingCancelledEvent, NewEventPublishedEvent {
+    permits BookingConfirmedEvent, BookingPendingEvent, BookingCancelledEvent, NewEventPublishedEvent, BookingReminderEvent {
 }

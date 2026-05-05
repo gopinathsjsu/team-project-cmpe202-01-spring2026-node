@@ -1,13 +1,15 @@
 package com.node.notificationService.events;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public final class BookingConfirmedEvent implements NotificationEvent {
+public final class BookingReminderEvent implements NotificationEvent {
     private String bookingId;
     private String eventId;
     private String userId;
@@ -15,11 +17,10 @@ public final class BookingConfirmedEvent implements NotificationEvent {
     private String userName;
     private String eventName;
     private String eventStartInstant;
-    private String eventEndInstant;
     private String eventTimeZone;
     private String eventLocationName;
     private String eventLocationAddress;
-    private String eventDescription;
     private int ticketQuantity;
-    private double totalAmount;
+    private String rsvpConfirmUrl;
+    private String rsvpDeclineUrl;
 }

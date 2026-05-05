@@ -230,6 +230,14 @@ services:
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
       FIREBASE_CREDENTIALS_PATH: ${FIREBASE_CREDENTIALS_PATH:-/tmp/firebase-not-configured.json}
+      NOTIFICATION_EVENT_SERVICE_BASE_URL: http://events-service:8080
+      NOTIFICATION_BOOKING_SERVICE_BASE_URL: http://booking-service:8082
+      NOTIFICATION_REMINDER_TIMEZONE: ${NOTIFICATION_REMINDER_TIMEZONE:-America/Los_Angeles}
+      NOTIFICATION_REMINDER_CRON: ${NOTIFICATION_REMINDER_CRON:-0 0 18 * * *}
+      NOTIFICATION_PUBLIC_BASE_URL: ${NOTIFICATION_PUBLIC_BASE_URL:-http://localhost:8083}
+      RSVP_TOKEN_SECRET: ${RSVP_TOKEN_SECRET:-dev-only-rsvp-secret-change-me}
+    volumes:
+      - ./secrets/firebase.json:/app/firebase.json:ro
     depends_on:
       postgres:
         condition: service_healthy
