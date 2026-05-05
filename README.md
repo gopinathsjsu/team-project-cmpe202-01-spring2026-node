@@ -10,12 +10,15 @@
 |-------------|--------------------------------|
 | **Megha Gangal** | **Identity service** (authentication, JWT, RBAC, admin APIs, Flyway, health/docs) and **AWS deployment** (EC2, Docker Compose, Nginx, deploy/heal scripts). |
 | **Mansi Gupta** | **EventServices, bookingServices, calender and map API** (End-to-end development of event management and booking management services including frontend and backend, calender and location(openstreetmap) api's integration) |
-| **Kavan** | *Add your summary.* |
-| **Nikhila** | *Add your summary.* |
+| **Kavan** | **DiscoveryServices** (services to search events based on different filters) |
+| **Nikhila** | **NotificationServices** |
 
-**Project journal (GitHub):** [Team repository](https://github.com/gopinathsjsu/team-project-cmpe202-01-spring2026-node) — *replace with the direct URL to your published journal when you have one (for example the repo **Wiki**, a `docs/` journal file, or **Discussions** if that is what the course uses).*  
+**Project journal (GitHub):** [Team repository](https://github.com/gopinathsjsu/team-project-cmpe202-01-spring2026-node)
 
 **Product backlog and sprint backlogs (Google Sheet):** [CMPE_202: Node Tracking List](https://docs.google.com/spreadsheets/d/1sS17w_S_EZQKe112ugmivBW-0eAAfOS5-_SmnGEWTso/edit?gid=1830485995#gid=1830485995) — Product Backlog and per-sprint tabs (Sprint-1, Sprint-2, etc.).
+**Project Doc's(including API specs, Wireframes and HLD)** https://docs.google.com/document/d/1MJzSrAHIUh0MCJmyZ7jPejq5NG0oiYXtWKJ2vkWn-B8/edit?tab=t.0
+
+
 
 ---
 
