@@ -79,40 +79,67 @@ https://lucid.app/lucidchart/ff52ae41-9c3e-4d10-8172-815fb9c23433/edit?invitatio
 
 ### Megha Gangal
 
-**Primary ownership:** **Identity service** and **AWS deployment** (production hosting on EC2).
+**Primary ownership:** Identity Service, API/Frontend integration for identity flows, and AWS production deployment.
 
 ---
 
-#### 1) Identity service (`node_backend_app/identity-service`)
+### 1) Identity Service (`node_backend_app/identity-service`)
 
 | Area | What was delivered |
-|------|---------------------|
-| **Authentication** | Register, login, logout, access + refresh tokens (rotation), bootstrap admin for first-time setup |
-| **Authorization** | Spring Security + JWT; **role-based access** for **Attendee**, **Organizer**, and **Admin** |
-| **Profiles** | Current user profile (`/api/v1/me`) and organizer profile endpoints |
-| **Administration** | Admin APIs for user listing (paged), creating additional admins, deactivate/reactivate/delete flows, and **event approve/reject** integration with Event Service |
-| **Security & data** | BCrypt password hashing, Flyway migrations, structured errors, audit logging for sensitive actions |
-| **Observability & testing** | Health endpoint (`/api/v1/health`), Actuator, Swagger / Postman collection for API verification |
+|------|-------------------|
+| Authentication | Implemented register, login, logout, refresh-token flow, and bootstrap first admin setup |
+| Authorization | JWT + role-based access for Attendee, Organizer, and Admin |
+| Profile APIs | `GET/PATCH /api/v1/me` and `GET/PUT /api/v1/organizers/me` |
+| Admin APIs | User management (paged list, create/remove admin, activate/deactivate/delete) and event approve/reject |
+| Data & security | BCrypt password hashing, Flyway migrations, request validation, and structured error handling |
+| Health & docs | `GET /api/v1/health`, Actuator, OpenAPI/Swagger, and Postman collection verification |
 
 ---
 
-#### 2) AWS deployment (production)
+### 2) API Design & Integration
 
 | Area | What was delivered |
-|------|---------------------|
-| **Runtime** | Single **AWS EC2** host running the full platform (not localhost-only) |
-| **Containers** | **`docker compose`** (`node_backend_app/docker-compose.yaml`, project `node-platform`) for Identity, Events, Booking, Notification, Discovery, **PostgreSQL (PostGIS)**, **Kafka + Zookeeper** |
-| **Edge / TLS** | **Nginx** reverse proxy: serves the **built React SPA** from `/opt/node-app/node_frontend_app/dist` and routes `/api/v1/...` to the correct service ports; **HTTPS** optional via **Let’s Encrypt** (see `deploy-artifacts/`) |
-| **Automation** | **`deploy-artifacts/push-ec2-opt-node-app.sh`** — local `npm run build`, rsync to `/opt/node-app`, remote compose + nginx + **systemd** unit; **EC2 Instance Connect** or `.pem` SSH supported |
-| **Reliability** | **`ensure-app-running.sh`** / **`heal-remote.sh`** to re-assemble nginx config, bring the stack up, and probe health after incidents |
+|------|-------------------|
+| API design | Versioned REST APIs under `/api/v1` with clear request/response contracts |
+| Validation & errors | Request validation and consistent JSON error responses |
+| Service integration | Identity moderation calls integrated with Event Service via WebClient |
+| API docs | Endpoints documented in Swagger and `design/api-index.md` |
 
 ---
 
-#### 3) Supporting work (cross-cutting)
+### 3) Frontend Integration
 
-- **Frontend (admin):** Admin user table uses Identity’s **`users`** paged JSON from `GET /api/v1/admin/users`; Admin User Management UI (create admin) and clearer API error toasts where needed  
-- **Repository hygiene:** Valid **`docker-compose.yaml`** (merge conflicts removed) so `docker compose` parses on EC2  
-- **Documentation:** [`design/deployment-diagram.md`](design/deployment-diagram.md) + [`design/deployment-diagram.png`](design/deployment-diagram.png) — simple **deployment diagram** for reports/slides  
+| Area | What was delivered |
+|------|-------------------|
+| Auth flow | Frontend login/register/logout integrated with Identity APIs |
+| Session handling | Access/refresh token handling with axios interceptors and AuthContext |
+| Profile page | Profile update UI for bio, interests, location, and timezone (`/profile`) |
+| Admin UI | Bootstrap-admin flow and Admin panel integrated with Identity admin APIs |
+
+---
+
+### 4) AWS Deployment (Production)
+
+| Area | What was delivered |
+|------|-------------------|
+| Runtime | Deployed the full platform to **AWS EC2** for production/demo use (not localhost-only) |
+| Services deployed | Deployed the **entire team’s stack together**: Identity, Events, Booking, Notification, Discovery, PostgreSQL (PostGIS), Kafka + Zookeeper — and handled cross-service dependencies to deliver a stable, repeatable hosted demo on EC2 |
+| Load balancing & autoscaling | Provisioned an **Application Load Balancer (ALB)** with target group + health checks and configured **Auto Scaling** so instances can be added/rotated without breaking the hosted demo environment |
+| Container orchestration | Managed the **Docker Compose** stack and service startup dependencies so the environment is reproducible and stable |
+| Edge routing | Configured **Nginx** to serve the React frontend and route **`/api/v1`** to the correct backend services |
+| Deployment automation | Automated build/sync/restart using `deploy-artifacts/push-ec2-opt-node-app.sh` |
+| Recovery & validation | Used `ensure-app-running.sh`, `heal-remote.sh`, and smoke/reconcile scripts to restore the stack quickly |
+| Operational runbooks | Documented EC2 connection/security-group troubleshooting and deployment handoff guidance for the team |
+
+---
+
+### 5) Supporting Work (Cross-cutting)
+
+| Area | What was delivered |
+|------|-------------------|
+| Production bug fix | Resolved the get current location issue on production (Profile geolocation flow) |
+| Repository stability | Fixed merge/compose issues so deployment config stays valid |
+| Documentation | Added deployment diagram and maintained API index for team integration |
 
 ---
 
