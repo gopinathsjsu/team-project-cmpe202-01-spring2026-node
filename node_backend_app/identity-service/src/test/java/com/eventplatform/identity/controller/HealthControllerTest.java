@@ -28,10 +28,14 @@ class HealthControllerTest {
 
     @Test
     void health_timestampIsIsoInstant() {
+        Instant before = Instant.now();
         ResponseEntity<Map<String, Object>> response = healthController.health();
+        Instant after = Instant.now();
 
         String timestamp = (String) response.getBody().get("timestamp");
         assertThat(timestamp).isNotBlank();
+        Instant parsed = Instant.parse(timestamp);
+        assertThat(parsed).isBetween(before.minusSeconds(1), after.plusSeconds(1));
         assertThatCode(() -> Instant.parse(timestamp)).doesNotThrowAnyException();
     }
 }
