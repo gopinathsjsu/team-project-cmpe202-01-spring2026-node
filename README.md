@@ -11,7 +11,7 @@
 | **Megha Gangal** | **Identity service** (authentication, JWT, RBAC, admin APIs, Flyway, health/docs) and **AWS deployment** (EC2, Docker Compose, Nginx, deploy/heal scripts). |
 | **Mansi Gupta** | **EventServices, bookingServices, calender and map API** (End-to-end development of event management and booking management services including frontend and backend, calender and location(openstreetmap) api's integration) |
 | **Kavan** | **DiscoveryServices** (services to search events based on different filters) |
-| **Nikhila** | **NotificationServices** |
+| **Nikhil** | **NotificationServices** |
 
 **Project journal (GitHub):** [Team repository](https://github.com/gopinathsjsu/team-project-cmpe202-01-spring2026-node)
 
@@ -228,7 +228,50 @@ https://docs.google.com/document/d/1MJzSrAHIUh0MCJmyZ7jPejq5NG0oiYXtWKJ2vkWn-B8/
 | Collaboration | Worked closely with Event Services and Booking Services for consistent data flow |
 | Documentation | Contributed to API documentation and project specs |
 
+---
+## Nikhila  
+**Primary ownership:** Notification Service (email, event-driven notifications, reminders)
 
+---
+
+### 1) Notification Service (node_backend_app/notification-service)
+
+| Area | What was delivered |
+|------|-------------------|
+| Event-driven notifications | Consumes Kafka events from Booking and Event Services |
+| Email notifications | Sends booking confirmations and event-related updates via email |
+| Reminders | Supports scheduled reminders for upcoming events |
+| Templates | Designed reusable email templates for different notification types |
+
+---
+
+### 2) Messaging & Integration
+
+| Area | What was delivered |
+|------|-------------------|
+| Kafka integration | Subscribes to topics for booking and event updates |
+| Producers/consumers | Handles reliable message consumption for notifications |
+| Integration | Works with Booking Service (booking confirmation) and Event Service (event updates) |
+
+---
+
+### 3) API & Configuration
+
+| Area | What was delivered |
+|------|-------------------|
+| Config management | Environment-based configs for SMTP (email service) |
+| Error handling | Retry handling and logging for failed notifications |
+| Validation | Ensures valid payloads before sending notifications |
+
+---
+
+### 4) Supporting work (cross-cutting)
+
+| Area | What was delivered |
+|------|-------------------|
+| Testing | Verified notification flows using Postman and Kafka events |
+| Collaboration | Coordinated with Booking and Event teams for event triggers |
+| Documentation | Contributed to notification flow and API documentation |
 ---
 
 ## Running the backend
