@@ -2,7 +2,7 @@
 
 ## Team
 
-**Team name:** Node — CMPE 202 *(replace with your official roster name if your instructor uses a different label).*
+**Team name:** Node — CMPE 202 *
 
 **Members and contribution areas**
 
@@ -41,7 +41,7 @@ Functional Requirement:
 7. RSVP Tracking - Attendee management for organizers
 8. Admin Management - Platform oversight and event approval
 10. Analytics Dashboard for admin/organizer.
-11. To be continued...
+11. Notification Services: Email for booking confirmation/RSVP Email
 
 Non Functional Requirement:
 
@@ -59,6 +59,16 @@ Architecture Diagram:
 /designs/architecture.pdf  
 
 Deployment (production overview): [`design/deployment-diagram.md`](design/deployment-diagram.md) (Mermaid + PNG)
+
+Database Design:
+
+/designs/db_design.pdf
+
+Wireframes:
+/designs/wireframe/...
+
+API Specifis to start with:
+https://docs.google.com/document/d/1MJzSrAHIUh0MCJmyZ7jPejq5NG0oiYXtWKJ2vkWn-B8/edit?tab=t.0#heading=h.nl1hj2kzuxa
 
 ---
 
@@ -103,15 +113,121 @@ Deployment (production overview): [`design/deployment-diagram.md`](design/deploy
 
 ---
 
-Database Design:
+## Mansi Gupta  
+**Primary ownership:** Event Services, Booking Services, Calendar & Map Integration (end-to-end frontend + backend)
 
-/designs/db_design.pdf
+---
 
-Wireframes:
-/designs/wireframe/...
+### 1) Event Services (node_backend_app/events-service)
 
-API Specifis to start with:
-https://docs.google.com/document/d/1MJzSrAHIUh0MCJmyZ7jPejq5NG0oiYXtWKJ2vkWn-B8/edit?tab=t.0#heading=h.nl1hj2kzuxa
+| Area | What was delivered |
+|------|-------------------|
+| Event CRUD | Create, update, delete, and fetch events with fields like title, description, date, time, location, category, price, and capacity |
+| Event details | Detailed event view with organizer info, schedule, and availability |
+| Validation & errors | Input validation for event creation (date, capacity, required fields) and structured error responses |
+| Integration | APIs integrated with Booking Service (for availability) and Discovery Service (for search/filter) |
+
+---
+
+### 2) Booking Services (node_backend_app/booking-service)
+
+| Area | What was delivered |
+|------|-------------------|
+| Ticketing | Booking system for free/mock-paid events |
+| Capacity management | Prevent overbooking by validating available slots before confirmation |
+| Booking APIs | Create booking, fetch user bookings, and event-based booking data |
+| RSVP tracking | Track attendees per event for organizers |
+| Integration | Consumes Event Service APIs to validate event existence and availability |
+
+---
+
+### 3) Calendar Integration
+
+| Area | What was delivered |
+|------|-------------------|
+| Calendar export | Generate `.ics` files for events |
+| External calendars | Support for Google Calendar, Outlook, Yahoo |
+| User experience | One-click “Add to Calendar” from event detail page |
+
+---
+
+### 4) Map Integration
+
+| Area | What was delivered |
+|------|-------------------|
+| Location display | Integrated OpenStreetMap for event locations |
+| Map UI | Embedded interactive map in event detail page |
+| Usability | Allows users to view and navigate to event location easily |
+
+---
+
+### 5) Frontend (Event & Booking flows)
+
+| Area | What was delivered |
+|------|-------------------|
+| Event UI | Pages for event listing, filtering, and event details |
+| Booking UI | User flow for booking tickets and viewing confirmation |
+| Integration | Connected frontend with backend APIs for real-time data |
+| UX | Responsive UI supporting smooth event discovery and booking |
+
+---
+
+### 6) Supporting work (cross-cutting)
+
+| Area | What was delivered |
+|------|-------------------|
+| API testing | Verified endpoints using Postman |
+| Collaboration | Worked closely with Discovery (search) and Notification services |
+| Documentation | Contributed to API specs and project documentation |
+
+---
+## Kavan  
+**Primary ownership:** Discovery Service (event search, filtering, and browsing)
+
+---
+
+### 1) Discovery Service (node_backend_app/discovery-service)
+
+| Area | What was delivered |
+|------|-------------------|
+| Event search | Search events using keywords (title, description, category) |
+| Filtering | Filter events by date, category, price, and availability |
+| Browsing | Support category-based browsing for quick event discovery |
+| Aggregation | Fetch and combine event data from Event Service for optimized responses |
+| Pagination | Implement paginated results for scalable event listing |
+| Sorting | Enable sorting by date, popularity, or price |
+
+---
+
+### 2) API Design & Integration
+
+| Area | What was delivered |
+|------|-------------------|
+| REST APIs | Designed and implemented discovery APIs with JSON responses |
+| Validation & errors | Input validation for filters/search queries and structured error handling |
+| Integration | Consumes Event Service APIs to retrieve event data |
+| Performance | Optimized queries for faster search and filtering responses |
+
+---
+
+### 3) Frontend Integration
+
+| Area | What was delivered |
+|------|-------------------|
+| Search UI | Integrated search bar with backend APIs |
+| Filter UI | Connected filters (date, category, price) with real-time results |
+| User experience | Smooth browsing experience with dynamic updates |
+
+---
+
+### 4) Supporting work (cross-cutting)
+
+| Area | What was delivered |
+|------|-------------------|
+| API testing | Tested endpoints using Postman |
+| Collaboration | Worked closely with Event Services and Booking Services for consistent data flow |
+| Documentation | Contributed to API documentation and project specs |
+
 
 ---
 
