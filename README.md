@@ -8,7 +8,7 @@
 
 | Team member | Summary of contribution areas |
 |-------------|--------------------------------|
-| **Megha Gangal** | **Identity service** (authentication, JWT, RBAC, admin APIs, Flyway, health/docs) and **AWS deployment** (EC2, Docker Compose, Nginx, deploy/heal scripts). |
+| **Megha Gangal** | **Identity service** delivery (authentication, JWT, RBAC, admin APIs, Flyway, health/docs) and **AWS production deployment** (EC2, Docker Compose, Nginx, deploy/heal scripts, ALB + Auto Scaling) to run the full microservice stack reliably. |
 | **Mansi Gupta** | **EventServices, bookingServices, calender and map API** (End-to-end development of event management and booking management services including frontend and backend, calender and location(openstreetmap) api's integration) |
 | **Kavan** | **DiscoveryServices** (services to search events based on different filters) |
 | **Nikhil** | **NotificationServices** |
