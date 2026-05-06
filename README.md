@@ -70,6 +70,9 @@ Wireframes:
 API Specifis to start with:
 https://docs.google.com/document/d/1MJzSrAHIUh0MCJmyZ7jPejq5NG0oiYXtWKJ2vkWn-B8/edit?tab=t.0#heading=h.nl1hj2kzuxa
 
+UML Class Diagram
+https://lucid.app/lucidchart/ff52ae41-9c3e-4d10-8172-815fb9c23433/edit?invitationId=inv_b31c4bd3-8640-4062-b97c-2a1b34c242b7&page=0_0#
+
 ---
 
 ## Team contributions
@@ -205,7 +208,7 @@ https://docs.google.com/document/d/1MJzSrAHIUh0MCJmyZ7jPejq5NG0oiYXtWKJ2vkWn-B8/
 |------|-------------------|
 | REST APIs | Designed and implemented discovery APIs with JSON responses |
 | Validation & errors | Input validation for filters/search queries and structured error handling |
-| Integration | Consumes Event Service APIs to retrieve event data |
+| Integration | Connects directly to the Event table table. |
 | Performance | Optimized queries for faster search and filtering responses |
 
 ---
@@ -229,7 +232,7 @@ https://docs.google.com/document/d/1MJzSrAHIUh0MCJmyZ7jPejq5NG0oiYXtWKJ2vkWn-B8/
 | Documentation | Contributed to API documentation and project specs |
 
 ---
-## Nikhila  
+## Nikhil  
 **Primary ownership:** Notification Service (email, event-driven notifications, reminders)
 
 ---
