@@ -227,8 +227,8 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       # Optional: set when you have SMTP / Firebase
-      MAIL_USERNAME: ${MAIL_USERNAME:-}
-      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_USERNAME: ${MAIL_USERNAME:-chiragnarang754@gmail.com}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-jxqmvsnnmbmcmhww}
       FIREBASE_CREDENTIALS_PATH: ${FIREBASE_CREDENTIALS_PATH:-/tmp/firebase-not-configured.json}
       NOTIFICATION_EVENT_SERVICE_BASE_URL: http://events-service:8080
       NOTIFICATION_BOOKING_SERVICE_BASE_URL: http://booking-service:8082
